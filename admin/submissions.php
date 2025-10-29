@@ -275,10 +275,10 @@ $total_pages = ceil($total_submissions / $per_page);
 
 <!-- Submission Detail Modal -->
 <div id="submission-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;">
-    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 8px; max-width: 600px; width: 90%; max-height: 80%; overflow-y: auto;">
-        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 20px;">
-            <h3 style="margin: 0;">Submission Details</h3>
-            <button type="button" id="close-modal" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 8px; max-width: 700px; width: 90%; max-height: 80%; overflow-y: auto;">
+        <div style="position: relative; padding-right: 32px; margin-bottom: 12px;">
+            <h3 style="margin: 0; font-size: 24px;">Submission Details</h3>
+            <button type="button" id="close-modal" aria-label="Close" title="Close" style="position: absolute; right: 0; top: 0; background: none; border: none; font-size: 24px; cursor: pointer; line-height: 1;">&times;</button>
         </div>
         <div id="submission-content"></div>
     </div>
