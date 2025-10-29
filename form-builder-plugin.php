@@ -184,6 +184,15 @@ class Form_Builder_Microsaas {
             'form-builder-new',
             array($this, 'render_builder_page')
         );
+
+        add_submenu_page(
+            'form-builder',
+            __('All Submissions', 'form-builder-microsaas'),
+            __('Submissions', 'form-builder-microsaas'),
+            'manage_options',
+            'form-builder-submissions',
+            array($this, 'render_submissions_page')
+        );
     }
     
     /**
@@ -191,6 +200,13 @@ class Form_Builder_Microsaas {
      */
     public function render_builder_page() {
         require_once FORM_BUILDER_PLUGIN_DIR . 'admin/builder.php';
+    }
+
+    /**
+     * Render submissions admin page
+     */
+    public function render_submissions_page() {
+        require_once FORM_BUILDER_PLUGIN_DIR . 'admin/submissions.php';
     }
     
     /**
@@ -226,6 +242,18 @@ class Form_Builder_Microsaas {
             'callback' => array($this, 'delete_form'),
             'permission_callback' => array($this, 'check_admin_permission'),
         ));
+
+        register_rest_route('form-builder/v1', '/submissions', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'save_submission'),
+            'permission_callback' => '__return_true',
+        ));
+
+        register_rest_route('form-builder/v1', '/submissions', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'get_submissions'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
     }
     
     /**
@@ -257,12 +285,15 @@ class Form_Builder_Microsaas {
      */
     public function save_form($request) {
         $data = $request->get_json_params();
-        
+
+        // Debug logging
+        error_log('Form save request received: ' . json_encode($data));
+
         // Verify nonce
         if (!isset($data['nonce']) || !wp_verify_nonce($data['nonce'], 'form_builder_save')) {
             return new WP_Error('invalid_nonce', 'Invalid nonce', array('status' => 403));
         }
-        
+
         $storage = new Form_Builder_Storage();
         $result = $storage->save_form($data);
         
@@ -295,12 +326,96 @@ class Form_Builder_Microsaas {
         $id = $request->get_param('id');
         $storage = new Form_Builder_Storage();
         $result = $storage->delete_form($id);
-        
+
         if (!$result) {
             return new WP_Error('delete_failed', 'Failed to delete form', array('status' => 500));
         }
-        
+
         return new WP_REST_Response(array('success' => true), 200);
+    }
+
+    /**
+     * Save submission
+     */
+    public function save_submission($request) {
+        $params = $request->get_json_params();
+
+        // Debug logging
+        error_log('Submission save request received: ' . json_encode($params));
+
+        // Validate required parameters
+        if (empty($params['form_id']) || !isset($params['formData'])) {
+            return new WP_Error(
+                'missing_params',
+                'form_id and formData are required',
+                array('status' => 400)
+            );
+        }
+
+        $form_id = intval($params['form_id']);
+        $form_data = $params['formData'];
+        $submission_uuid = isset($params['submission_uuid']) ? sanitize_text_field($params['submission_uuid']) : $this->generate_uuid();
+
+        error_log('Processing submission - Form ID: ' . $form_id . ', UUID: ' . $submission_uuid . ', Data: ' . json_encode($form_data));
+
+        // Validate form exists
+        $storage = new Form_Builder_Storage();
+        $form = $storage->get_form_by_id($form_id);
+        if (!$form) {
+            return new WP_Error(
+                'form_not_found',
+                'Form not found',
+                array('status' => 404)
+            );
+        }
+
+        // Save submission
+        $submission_id = $storage->insert_submission(
+            $form_id,
+            $submission_uuid,
+            count($form['form_config']['pages']), // Final page
+            $form_data,
+            true // Mark as delivered since it's a direct save
+        );
+
+        if (!$submission_id) {
+            return new WP_Error(
+                'save_failed',
+                'Failed to save submission',
+                array('status' => 500)
+            );
+        }
+
+        return new WP_REST_Response(array(
+            'success' => true,
+            'submission_id' => $submission_id,
+            'submission_uuid' => $submission_uuid
+        ), 200);
+    }
+
+    /**
+     * Get submissions
+     */
+    public function get_submissions($request) {
+        $storage = new Form_Builder_Storage();
+
+        // Get all submissions with form info
+        global $wpdb;
+        $submissions = $wpdb->get_results("
+            SELECT s.*, f.form_name, f.form_slug
+            FROM {$wpdb->prefix}form_builder_submissions s
+            LEFT JOIN {$wpdb->prefix}form_builder_forms f ON s.form_id = f.id
+            ORDER BY s.created_at DESC
+        ", ARRAY_A);
+
+        // Decode form data
+        foreach ($submissions as &$submission) {
+            if ($submission['form_data']) {
+                $submission['form_data'] = json_decode($submission['form_data'], true);
+            }
+        }
+
+        return new WP_REST_Response(array('submissions' => $submissions), 200);
     }
     
     /**
@@ -377,6 +492,23 @@ class Form_Builder_Microsaas {
                 'nonce' => wp_create_nonce('wp_rest'),
             ));
         }
+    }
+
+    /**
+     * Generate UUID
+     */
+    private function generate_uuid() {
+        return sprintf(
+            '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000,
+            mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff)
+        );
     }
 }
 

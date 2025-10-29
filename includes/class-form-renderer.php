@@ -111,7 +111,7 @@ class Form_Builder_Renderer {
      */
     private function render_field($field) {
         $field_id = isset($field['id']) ? $field['id'] : 'field_' . uniqid();
-        $field_name = isset($field['name']) ? esc_attr($field['name']) : '';
+        $field_name = isset($field['name']) && !empty($field['name']) ? esc_attr($field['name']) : $field_id;
         $field_label = isset($field['label']) ? esc_html($field['label']) : '';
         $field_type = isset($field['type']) ? esc_attr($field['type']) : 'text';
         $required = isset($field['required']) && $field['required'] ? 'required' : '';
@@ -295,8 +295,9 @@ class Form_Builder_Renderer {
         ));
         
         // Localize script with form data using instance ID
-        wp_add_inline_script('form-builder-frontend', 
-            'window.formBuilderData_' . esc_js($form_instance_id) . ' = ' . json_encode(array(
+        wp_add_inline_script('form-builder-frontend',
+            'window.formBuilderData = window.formBuilderData || {}; ' .
+            'window.formBuilderData["' . esc_js($form_instance_id) . '"] = ' . json_encode(array(
                 'formId' => $form['id'],
                 'formSlug' => $form['form_slug'],
                 'formConfig' => $form['form_config'],

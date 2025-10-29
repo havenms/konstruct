@@ -3,17 +3,17 @@
  * Handles form pagination, validation, and webhook submission
  */
 
-(function() {
+(function () {
     'use strict';
-    
+
     // Initialize all forms on the page
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const forms = document.querySelectorAll('.form-builder-container');
-        forms.forEach(function(container) {
+        forms.forEach(function (container) {
             new FormBuilderInstance(container);
         });
     });
-    
+
     /**
      * Form Builder Instance
      */
@@ -25,85 +25,115 @@
         this.currentPage = 1;
         this.formData = {};
         this.submissionUuid = null;
-        
+
         // Get form config from localized script
-        const configKey = 'formBuilderData_' + this.instanceId;
-        if (typeof window[configKey] === 'undefined') {
+        if (typeof window.formBuilderData === 'undefined' || typeof window.formBuilderData[this.instanceId] === 'undefined') {
             console.error('Form config not found for instance:', this.instanceId);
             return;
         }
-        
-        this.config = window[configKey].formConfig;
-        this.submissionUuid = window[configKey].submissionUuid;
-        
+
+        const formData = window.formBuilderData[this.instanceId];
+        this.config = formData.formConfig;
+        this.submissionUuid = formData.submissionUuid;
+
         // Initialize first
         this.init();
-        
+
         // Load saved data from localStorage (after DOM is ready)
         this.loadSavedData();
-        
+
         // Show correct page after loading saved data
         this.showPage(this.currentPage);
     }
-    
-    FormBuilderInstance.prototype.init = function() {
+
+    FormBuilderInstance.prototype.init = function () {
         this.totalPages = this.config.pages.length;
         this.updateProgress();
         this.setupEventListeners();
     };
-    
-    FormBuilderInstance.prototype.setupEventListeners = function() {
+
+    FormBuilderInstance.prototype.setupEventListeners = function () {
         const self = this;
-        
+
         // Form field changes
-        this.formElement.addEventListener('change', function(e) {
+        this.formElement.addEventListener('change', function (e) {
             self.handleFieldChange(e);
         });
-        
-        this.formElement.addEventListener('input', function(e) {
+
+        this.formElement.addEventListener('input', function (e) {
             self.handleFieldChange(e);
         });
-        
-        // Navigation buttons
-        const backBtn = this.formElement.querySelector('.form-builder-btn-back');
-        const nextBtn = this.formElement.querySelector('.form-builder-btn-next');
-        const submitBtn = this.formElement.querySelector('.form-builder-btn-submit');
-        
-        if (backBtn) {
-            backBtn.addEventListener('click', function() {
+
+        // Navigation buttons - use event delegation for better reliability
+        this.formElement.addEventListener('click', function (e) {
+            const target = e.target;
+
+            if (target.matches('.form-builder-btn-back') || target.closest('.form-builder-btn-back')) {
+                e.preventDefault();
                 self.goToPreviousPage();
-            });
-        }
-        
-        if (nextBtn) {
-            nextBtn.addEventListener('click', function() {
+            }
+
+            if (target.matches('.form-builder-btn-next') || target.closest('.form-builder-btn-next')) {
+                e.preventDefault();
                 self.goToNextPage();
-            });
-        }
-        
-        if (submitBtn) {
-            submitBtn.addEventListener('click', function(e) {
+            }
+
+            if (target.matches('.form-builder-btn-submit') || target.closest('.form-builder-btn-submit')) {
                 e.preventDefault();
                 self.submitForm();
-            });
-        }
-        
+            }
+        });
+
         // Form submit
-        this.formElement.addEventListener('submit', function(e) {
+        this.formElement.addEventListener('submit', function (e) {
             e.preventDefault();
             self.submitForm();
         });
     };
-    
-    FormBuilderInstance.prototype.handleFieldChange = function(e) {
+
+    FormBuilderInstance.prototype.handleFieldChange = function (e) {
         const field = e.target;
-        const fieldName = field.name;
-        
+        let fieldName = field.name;
+
+        // If field name is empty, try to find it in the current page config
+        if (!fieldName) {
+            const currentPageConfig = this.config.pages[this.currentPage - 1];
+            if (currentPageConfig && currentPageConfig.fields) {
+                // Find the field that matches this element
+                for (let i = 0; i < currentPageConfig.fields.length; i++) {
+                    const pageField = currentPageConfig.fields[i];
+                    // Try to match by field ID if available
+                    if (field.id && field.id === pageField.id) {
+                        fieldName = pageField.name || pageField.id || 'field_' + i;
+                        break;
+                    }
+                    // Fallback: use field index as name
+                    if (pageField.name) {
+                        // Check if this field matches by comparing with other fields of same type
+                        const fieldElements = this.formElement.querySelectorAll('input[type="' + field.type + '"], textarea, select');
+                        const fieldIndex = Array.from(fieldElements).indexOf(field);
+                        if (fieldIndex === i) {
+                            fieldName = pageField.name;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Ultimate fallback
+            if (!fieldName) {
+                fieldName = 'unnamed_field_' + Date.now();
+            }
+        }
+
         let value;
-        
+
         if (field.type === 'checkbox') {
-            // Handle checkboxes as arrays
-            const checkboxes = this.formElement.querySelectorAll('input[name="' + fieldName + '"]:checked');
+            // Handle checkboxes as arrays - check both name and name[] formats
+            let checkboxes = this.formElement.querySelectorAll('input[name="' + fieldName + '"]:checked');
+            if (checkboxes.length === 0) {
+                checkboxes = this.formElement.querySelectorAll('input[name="' + fieldName + '[]"]:checked');
+            }
             value = Array.from(checkboxes).map(cb => cb.value);
         } else if (field.type === 'radio') {
             value = field.value;
@@ -112,36 +142,47 @@
         } else {
             value = field.value;
         }
-        
+
+        console.log('Field change - name:', fieldName, 'value:', value);
         this.formData[fieldName] = value;
         this.saveData();
     };
-    
-    FormBuilderInstance.prototype.validateCurrentPage = function() {
+
+    FormBuilderInstance.prototype.validateCurrentPage = function () {
         const currentPageConfig = this.config.pages[this.currentPage - 1];
         if (!currentPageConfig || !currentPageConfig.fields) {
             return true;
         }
-        
+
         let isValid = true;
         const errors = [];
-        
-        currentPageConfig.fields.forEach(function(field) {
-            const fieldElement = this.formElement.querySelector('[name="' + field.name + '"]');
-            if (!fieldElement) return;
-            
+
+        currentPageConfig.fields.forEach(function (field) {
+            let fieldElement = this.formElement.querySelector('[name="' + field.name + '"]');
+            if (!fieldElement && field.type === 'checkbox') {
+                // Try with [] suffix for checkboxes
+                fieldElement = this.formElement.querySelector('[name="' + field.name + '[]"]');
+            }
+            if (!fieldElement) {
+                return;
+            }
+
             // Skip hidden fields
             const fieldContainer = fieldElement.closest('.form-builder-field');
             if (fieldContainer && fieldContainer.style.display === 'none') {
                 return;
             }
-            
+
             // Check required fields
             if (field.required) {
                 let value = this.formData[field.name];
-                
+
                 if (field.type === 'checkbox') {
-                    const checkboxes = this.formElement.querySelectorAll('input[name="' + field.name + '[]"]:checked');
+                    // Check both name formats for checkboxes
+                    let checkboxes = this.formElement.querySelectorAll('input[name="' + field.name + '"]:checked');
+                    if (checkboxes.length === 0) {
+                        checkboxes = this.formElement.querySelectorAll('input[name="' + field.name + '[]"]:checked');
+                    }
                     value = checkboxes.length > 0;
                 } else if (field.type === 'radio') {
                     const radio = this.formElement.querySelector('input[name="' + field.name + '"]:checked');
@@ -149,7 +190,7 @@
                 } else if (field.type === 'file') {
                     value = fieldElement.files.length > 0;
                 }
-                
+
                 if (!value || (typeof value === 'string' && value.trim() === '')) {
                     isValid = false;
                     errors.push(field.label || field.name);
@@ -160,14 +201,14 @@
             } else {
                 this.clearFieldError(fieldElement);
             }
-            
+
             // HTML5 validation
             if (!fieldElement.checkValidity()) {
                 isValid = false;
                 this.showFieldError(fieldElement, fieldElement.validationMessage);
             }
         }.bind(this));
-        
+
         if (!isValid) {
             // Scroll to first error
             const firstError = this.formElement.querySelector('.form-builder-field.error');
@@ -175,11 +216,11 @@
                 firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
-        
+
         return isValid;
     };
-    
-    FormBuilderInstance.prototype.showFieldError = function(fieldElement, message) {
+
+    FormBuilderInstance.prototype.showFieldError = function (fieldElement, message) {
         const fieldContainer = fieldElement.closest('.form-builder-field');
         if (fieldContainer) {
             fieldContainer.classList.add('error');
@@ -190,8 +231,8 @@
             }
         }
     };
-    
-    FormBuilderInstance.prototype.clearFieldError = function(fieldElement) {
+
+    FormBuilderInstance.prototype.clearFieldError = function (fieldElement) {
         const fieldContainer = fieldElement.closest('.form-builder-field');
         if (fieldContainer) {
             fieldContainer.classList.remove('error');
@@ -201,19 +242,19 @@
             }
         }
     };
-    
-    FormBuilderInstance.prototype.goToNextPage = function() {
+
+    FormBuilderInstance.prototype.goToNextPage = function () {
         if (!this.validateCurrentPage()) {
             return;
         }
-        
+
         const currentPageConfig = this.config.pages[this.currentPage - 1];
-        
+
         // Send webhook if enabled for current page
         if (currentPageConfig.webhook && currentPageConfig.webhook.enabled && currentPageConfig.webhook.url) {
             this.sendWebhook(currentPageConfig.webhook.url, this.currentPage);
         }
-        
+
         // Execute custom JS if present
         if (currentPageConfig.customJS) {
             try {
@@ -224,59 +265,59 @@
                 console.error('Error executing custom JS:', e);
             }
         }
-        
+
         if (this.currentPage < this.totalPages) {
             this.currentPage++;
             this.showPage(this.currentPage);
         }
     };
-    
-    FormBuilderInstance.prototype.goToPreviousPage = function() {
+
+    FormBuilderInstance.prototype.goToPreviousPage = function () {
         if (this.currentPage > 1) {
             this.currentPage--;
             this.showPage(this.currentPage);
         }
     };
-    
-    FormBuilderInstance.prototype.showPage = function(pageNumber) {
+
+    FormBuilderInstance.prototype.showPage = function (pageNumber) {
         const pages = this.formElement.querySelectorAll('.form-builder-page');
-        pages.forEach(function(page, index) {
+        pages.forEach(function (page, index) {
             if (index + 1 === pageNumber) {
                 page.style.display = 'block';
             } else {
                 page.style.display = 'none';
             }
         });
-        
+
         this.updateButtons();
         this.updateProgress();
-        
+
         // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
-    
-    FormBuilderInstance.prototype.updateButtons = function() {
+
+    FormBuilderInstance.prototype.updateButtons = function () {
         const backBtn = this.formElement.querySelector('.form-builder-btn-back');
         const nextBtn = this.formElement.querySelector('.form-builder-btn-next');
         const submitBtn = this.formElement.querySelector('.form-builder-btn-submit');
-        
+
         if (backBtn) {
             backBtn.style.display = this.currentPage > 1 ? 'block' : 'none';
         }
-        
+
         if (nextBtn) {
             nextBtn.style.display = this.currentPage < this.totalPages ? 'block' : 'none';
         }
-        
+
         if (submitBtn) {
             submitBtn.style.display = this.currentPage === this.totalPages ? 'block' : 'none';
         }
     };
-    
-    FormBuilderInstance.prototype.updateProgress = function() {
+
+    FormBuilderInstance.prototype.updateProgress = function () {
         const currentSpan = this.formElement.querySelector('.form-builder-page-current');
         const totalSpan = this.formElement.querySelector('.form-builder-page-total');
-        
+
         if (currentSpan) {
             currentSpan.textContent = this.currentPage;
         }
@@ -284,19 +325,22 @@
             totalSpan.textContent = this.totalPages;
         }
     };
-    
-    FormBuilderInstance.prototype.submitForm = function() {
+
+    FormBuilderInstance.prototype.submitForm = function () {
         if (!this.validateCurrentPage()) {
             return;
         }
-        
+
         const currentPageConfig = this.config.pages[this.currentPage - 1];
-        
+
+        // Always save submission to database (regardless of webhook)
+        this.saveSubmissionToDatabase();
+
         // Send webhook if enabled for last page
         if (currentPageConfig.webhook && currentPageConfig.webhook.enabled && currentPageConfig.webhook.url) {
             this.sendWebhook(currentPageConfig.webhook.url, this.currentPage, true);
         }
-        
+
         // Execute custom JS if present
         if (currentPageConfig.customJS) {
             try {
@@ -306,17 +350,45 @@
                 console.error('Error executing custom JS:', e);
             }
         }
-        
+
         // Show success message
         this.showSuccess();
-        
+
         // Clear saved data
         this.clearSavedData();
     };
-    
-    FormBuilderInstance.prototype.sendWebhook = function(url, pageNumber, isFinal = false) {
+
+    FormBuilderInstance.prototype.saveSubmissionToDatabase = function () {
         const self = this;
-        
+
+        fetch(formBuilderFrontend.apiUrl + 'submissions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-WP-Nonce': formBuilderFrontend.nonce
+            },
+            body: JSON.stringify({
+                form_id: this.formId,
+                submission_uuid: this.submissionUuid,
+                formData: this.formData
+            })
+        })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                if (data.submission_uuid) {
+                    self.submissionUuid = data.submission_uuid;
+                }
+            })
+            .catch(function (error) {
+                console.error('Database save error:', error);
+            });
+    };
+
+    FormBuilderInstance.prototype.sendWebhook = function (url, pageNumber, isFinal = false) {
+        const self = this;
+
         fetch(formBuilderFrontend.apiUrl + 'webhook', {
             method: 'POST',
             headers: {
@@ -331,24 +403,24 @@
                 formData: this.formData
             })
         })
-        .then(function(response) {
-            return response.json();
-        })
-        .then(function(data) {
-            if (isFinal && data.submission_uuid) {
-                // Mark as delivered
-                self.submissionUuid = data.submission_uuid;
-            }
-        })
-        .catch(function(error) {
-            console.error('Webhook error:', error);
-        });
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                if (isFinal && data.submission_uuid) {
+                    // Mark as delivered
+                    self.submissionUuid = data.submission_uuid;
+                }
+            })
+            .catch(function (error) {
+                console.error('Webhook error:', error);
+            });
     };
-    
-    FormBuilderInstance.prototype.showSuccess = function() {
+
+    FormBuilderInstance.prototype.showSuccess = function () {
         const form = this.formElement;
         const success = this.container.querySelector('.form-builder-success');
-        
+
         if (form) {
             form.style.display = 'none';
         }
@@ -356,8 +428,8 @@
             success.style.display = 'block';
         }
     };
-    
-    FormBuilderInstance.prototype.saveData = function() {
+
+    FormBuilderInstance.prototype.saveData = function () {
         const storageKey = 'form_builder_data_' + this.formId;
         try {
             localStorage.setItem(storageKey, JSON.stringify({
@@ -369,8 +441,8 @@
             console.error('Error saving to localStorage:', e);
         }
     };
-    
-    FormBuilderInstance.prototype.loadSavedData = function() {
+
+    FormBuilderInstance.prototype.loadSavedData = function () {
         const storageKey = 'form_builder_data_' + this.formId;
         try {
             const saved = localStorage.getItem(storageKey);
@@ -379,13 +451,17 @@
                 if (data.formData) {
                     this.formData = data.formData;
                     // Restore field values
-                    Object.keys(this.formData).forEach(function(key) {
+                    Object.keys(this.formData).forEach(function (key) {
                         const field = this.formElement.querySelector('[name="' + key + '"]');
                         if (field) {
                             if (field.type === 'checkbox') {
                                 const values = Array.isArray(this.formData[key]) ? this.formData[key] : [this.formData[key]];
-                                values.forEach(function(val) {
-                                    const cb = this.formElement.querySelector('[name="' + key + '[]"][value="' + val + '"]');
+                                values.forEach(function (val) {
+                                    // Try both name formats for checkboxes
+                                    let cb = this.formElement.querySelector('[name="' + key + '"][value="' + val + '"]');
+                                    if (!cb) {
+                                        cb = this.formElement.querySelector('[name="' + key + '[]"][value="' + val + '"]');
+                                    }
                                     if (cb) cb.checked = true;
                                 }.bind(this));
                             } else if (field.type === 'radio') {
@@ -408,8 +484,8 @@
             console.error('Error loading from localStorage:', e);
         }
     };
-    
-    FormBuilderInstance.prototype.clearSavedData = function() {
+
+    FormBuilderInstance.prototype.clearSavedData = function () {
         const storageKey = 'form_builder_data_' + this.formId;
         try {
             localStorage.removeItem(storageKey);
@@ -417,6 +493,6 @@
             console.error('Error clearing localStorage:', e);
         }
     };
-    
+
 })();
 

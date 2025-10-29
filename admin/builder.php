@@ -15,6 +15,11 @@ $builder = new Form_Builder_Builder();
 $form_id = isset($_GET['form_id']) ? intval($_GET['form_id']) : 0;
 $action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : 'list';
 
+// If page is form-builder-new, set action to new
+if (isset($_GET['page']) && $_GET['page'] === 'form-builder-new') {
+    $action = 'new';
+}
+
 $form = null;
 if ($form_id && $action === 'edit') {
     $form = $storage->get_form_by_id($form_id);

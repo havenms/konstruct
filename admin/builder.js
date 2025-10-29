@@ -35,6 +35,30 @@
             }];
         }
 
+        // Normalize form data - ensure all fields have required properties
+        formData.pages.forEach(function (page, pageIndex) {
+            if (!page.fields) page.fields = [];
+
+            page.fields.forEach(function (field, fieldIndex) {
+                // Ensure all required properties exist
+                if (typeof field.id === 'undefined') field.id = 'field_' + Date.now() + '_' + fieldIndex;
+                if (typeof field.name === 'undefined') field.name = '';
+                if (typeof field.label === 'undefined') field.label = field.type ? 'New ' + field.type.charAt(0).toUpperCase() + field.type.slice(1) + ' Field' : 'Unnamed Field';
+                if (typeof field.type === 'undefined') field.type = 'text';
+                if (typeof field.required === 'undefined') field.required = false;
+                if (typeof field.placeholder === 'undefined') field.placeholder = '';
+                if (typeof field.options === 'undefined') field.options = [];
+
+                // Ensure webhook settings exist for page
+                if (typeof page.webhook === 'undefined') {
+                    page.webhook = { enabled: false, url: '', method: 'POST' };
+                }
+                if (typeof page.customJS === 'undefined') {
+                    page.customJS = '';
+                }
+            });
+        });
+
         renderPages();
         renderCurrentPage();
         setupEventListeners();
@@ -201,7 +225,9 @@
         $label.append('<label>Label</label>');
         $label.append('<input type="text" id="field-label" class="regular-text" value="' + (field.label || '') + '">');
         $('#field-label').on('input', function () {
+            console.log('Updating field label to:', $(this).val());
             field.label = $(this).val();
+            console.log('Field label is now:', field.label);
             renderCurrentPage();
         });
         $props.append($label);
@@ -255,11 +281,11 @@
         const field = {
             id: 'field_' + Date.now(),
             name: '',
-            label: '',
+            label: 'New ' + type.charAt(0).toUpperCase() + type.slice(1) + ' Field',
             type: type,
             required: false,
             placeholder: '',
-            options: []
+            options: type === 'select' || type === 'radio' || type === 'checkbox' ? ['Option 1', 'Option 2', 'Option 3'] : []
         };
 
         page.fields.push(field);
@@ -302,12 +328,29 @@
             return;
         }
 
+        // Ensure all field properties are properly saved
+        formData.pages.forEach(function (page, pageIndex) {
+            console.log('Processing page', pageIndex, 'with', page.fields.length, 'fields');
+            page.fields.forEach(function (field, fieldIndex) {
+                console.log('Field', fieldIndex, 'before save:', JSON.stringify(field));
+                // Make sure all properties exist and are strings/booleans as expected
+                field.label = field.label || '';
+                field.name = field.name || '';
+                field.placeholder = field.placeholder || '';
+                field.required = !!field.required;
+                field.options = field.options || [];
+                console.log('Field', fieldIndex, 'after save:', JSON.stringify(field));
+            });
+        });
+
         const data = {
             form_name: formName,
             form_slug: formSlug,
             form_config: formData,
             nonce: formBuilderAdmin.saveNonce
         };
+
+        console.log('Saving form data:', JSON.stringify(data, null, 2));
 
         // Check if editing
         const urlParams = new URLSearchParams(window.location.search);
@@ -321,6 +364,9 @@
             method: 'POST',
             contentType: 'application/json',
             data: JSON.stringify(data),
+            beforeSend: function (xhr) {
+                xhr.setRequestHeader('X-WP-Nonce', formBuilderAdmin.nonce);
+            },
             success: function (response) {
                 alert('Form saved successfully!');
                 if (!formId) {
@@ -340,6 +386,9 @@
         $.ajax({
             url: formBuilderAdmin.apiUrl + 'forms',
             method: 'GET',
+            beforeSend: function (xhr) {
+                xhr.setRequestHeader('X-WP-Nonce', formBuilderAdmin.nonce);
+            },
             success: function (response) {
                 const $tbody = $('#forms-list');
                 $tbody.empty();
@@ -367,6 +416,9 @@
                         $.ajax({
                             url: formBuilderAdmin.apiUrl + 'forms/' + formId,
                             method: 'DELETE',
+                            beforeSend: function (xhr) {
+                                xhr.setRequestHeader('X-WP-Nonce', formBuilderAdmin.nonce);
+                            },
                             success: function () {
                                 loadFormsList();
                             },
