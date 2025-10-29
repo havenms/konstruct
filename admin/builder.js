@@ -223,26 +223,25 @@
         $webhook.append('<h4>Webhook Settings</h4>');
         $webhook.append('<label><input type="checkbox" id="webhook-enabled" ' + (page.webhook.enabled ? 'checked' : '') + '> Enable Webhook</label>');
         $webhook.append('<input type="url" id="webhook-url" class="regular-text" placeholder="https://example.com/webhook" value="' + escapeHtml(page.webhook.url || '') + '">');
+        $props.append($webhook);
 
-        $('#webhook-enabled').on('change', function () {
+        // Bind after append so elements exist
+        $('#webhook-enabled').off('change').on('change', function () {
             page.webhook.enabled = $(this).is(':checked');
         });
-
-        $('#webhook-url').on('input', function () {
+        $('#webhook-url').off('input').on('input', function () {
             page.webhook.url = $(this).val();
         });
-
-        $props.append($webhook);
 
         const $customJS = $('<div class="property-group">');
         $customJS.append('<h4>Custom JavaScript (Optional)</h4>');
         $customJS.append('<textarea id="custom-js" class="large-text code" rows="5" placeholder="// Custom JS code here">' + escapeHtml(page.customJS || '') + '</textarea>');
+        $props.append($customJS);
 
-        $('#custom-js').on('input', function () {
+        // Bind after append
+        $('#custom-js').off('input').on('input', function () {
             page.customJS = $(this).val();
         });
-
-        $props.append($customJS);
     }
 
     /**
@@ -263,20 +262,21 @@
         const $label = $('<div class="property-item">');
         $label.append('<label>Label <span style="color: #ff3b30;">*</span></label>');
         $label.append('<input type="text" id="field-label" class="regular-text" value="' + escapeHtml(field.label || '') + '">');
-        $('#field-label').on('input', function () {
+        $props.append($label);
+        // Bind after append
+        $('#field-label').off('input').on('input', function () {
             field.label = $(this).val();
             renderCurrentPage();
         });
-        $props.append($label);
 
         // Field Name (for form submission key)
         const $name = $('<div class="property-item">');
         $name.append('<label>Field Name <span style="font-size: 12px; color: #666;">(for submissions)</span></label>');
         $name.append('<input type="text" id="field-name" class="regular-text" value="' + escapeHtml(field.name || '') + '" placeholder="auto-generated if empty">');
-        $('#field-name').on('input', function () {
+        $props.append($name);
+        $('#field-name').off('input').on('input', function () {
             field.name = $(this).val();
         });
-        $props.append($name);
 
         // Type (read-only)
         const $type = $('<div class="property-item">');
@@ -287,19 +287,19 @@
         // Required checkbox
         const $required = $('<div class="property-item">');
         $required.append('<label><input type="checkbox" id="field-required" ' + (field.required ? 'checked' : '') + '> Required</label>');
-        $('#field-required').on('change', function () {
+        $props.append($required);
+        $('#field-required').off('change').on('change', function () {
             field.required = $(this).is(':checked');
         });
-        $props.append($required);
 
         // Placeholder
         const $placeholder = $('<div class="property-item">');
         $placeholder.append('<label>Placeholder Text</label>');
         $placeholder.append('<input type="text" id="field-placeholder" class="regular-text" value="' + escapeHtml(field.placeholder || '') + '">');
-        $('#field-placeholder').on('input', function () {
+        $props.append($placeholder);
+        $('#field-placeholder').off('input').on('input', function () {
             field.placeholder = $(this).val();
         });
-        $props.append($placeholder);
 
         // Options (for select, radio, checkbox)
         if (['select', 'radio', 'checkbox'].includes(field.type)) {
@@ -307,10 +307,10 @@
             $options.append('<label>Options <span style="font-size: 12px; color: #666;">(one per line)</span></label>');
             const optionsText = (field.options || []).join('\n');
             $options.append('<textarea id="field-options" class="large-text" rows="5" placeholder="Option 1&#10;Option 2&#10;Option 3">' + escapeHtml(optionsText) + '</textarea>');
-            $('#field-options').on('input', function () {
+            $props.append($options);
+            $('#field-options').off('input').on('input', function () {
                 field.options = $(this).val().split('\n').filter(o => o.trim()).map(o => o.trim());
             });
-            $props.append($options);
         }
 
         // Helper text
@@ -375,6 +375,9 @@
             alert('Please enter a form slug');
             return;
         }
+
+        // Ensure top-level name in form_config to align with backend expectations
+        formData.name = formName;
 
         // Validate at least one page with fields
         let totalFields = 0;
@@ -520,4 +523,3 @@
     }
 
 })(jQuery);
-

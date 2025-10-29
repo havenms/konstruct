@@ -63,20 +63,26 @@ class Form_Builder_Storage {
         
         // Update existing form
         if (isset($data['id']) && !empty($data['id'])) {
-            $form_data['id'] = intval($data['id']);
+            $form_id = intval($data['id']);
+
+            // IMPORTANT: Do not include primary key `id` in the data to update
             $result = $wpdb->update(
                 $this->forms_table,
                 $form_data,
-                array('id' => $form_data['id']),
+                array('id' => $form_id),
                 array('%s', '%s', '%s', '%s'),
                 array('%d')
             );
-            
+
             if ($result === false) {
+                // Add diagnostic logging to help identify root cause in production
+                if (defined('WP_DEBUG') && WP_DEBUG) {
+                    error_log('[Form_Builder_Storage] Update failed for ID ' . $form_id . ' - ' . $wpdb->last_error);
+                }
                 return new WP_Error('update_failed', 'Failed to update form');
             }
-            
-            return $this->get_form_by_id($form_data['id']);
+
+            return $this->get_form_by_id($form_id);
         }
         
         // Insert new form
