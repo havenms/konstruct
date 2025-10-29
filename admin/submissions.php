@@ -304,24 +304,33 @@ jQuery(document).ready(function($) {
         let content = '<div style="margin-bottom: 20px;">';
         content += '<strong>Submission ID:</strong> ' + submission.id + '<br>';
         content += '<strong>Form:</strong> ' + (submission.form_name || 'Unknown') + '<br>';
-        content += '<strong>UUID:</strong> <code>' + submission.submission_uuid + '</code><br>';
+        content += '<strong>UUID:</strong> <code style="word-break: break-all;">' + submission.submission_uuid + '</code><br>';
         content += '<strong>Page:</strong> ' + submission.page_number + '<br>';
-        content += '<strong>Status:</strong> ' + (submission.delivered ? 'Delivered' : 'Pending') + '<br>';
+        content += '<strong>Status:</strong> ' + (submission.delivered ? '✅ Delivered' : '⏳ Pending') + '<br>';
         content += '<strong>Submitted:</strong> ' + new Date(submission.created_at).toLocaleString() + '<br>';
         content += '</div>';
+        content += '<div style="border-top: 1px solid #e5e7eb; padding-top: 15px; margin-top: 15px;"></div>';
 
         if (submission.form_data && typeof submission.form_data === 'object') {
-            content += '<h4>Form Data:</h4>';
-            content += '<div style="background: #f9fafb; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 13px;">';
+            content += '<h4 style="margin-top: 20px; margin-bottom: 15px;">📋 Form Data:</h4>';
+            content += '<div style="background: #f9fafb; padding: 15px; border-radius: 6px;">';
+            
+            let fieldIndex = 0;
             for (const [key, value] of Object.entries(submission.form_data)) {
-                content += '<div style="margin-bottom: 8px;">';
-                content += '<strong>' + key + ':</strong> ';
+                if (fieldIndex > 0) {
+                    content += '<div style="border-top: 1px solid #e5e7eb; margin: 12px 0; padding-top: 12px;"></div>';
+                }
+                content += '<div style="margin-bottom: 12px;">';
+                content += '<strong style="color: #0071e3; display: block; margin-bottom: 4px;">' + key + '</strong>';
+                content += '<div style="color: #374151; word-break: break-word; font-family: monospace; font-size: 13px; padding: 6px 8px; background: white; border-radius: 4px; border-left: 3px solid #0071e3;">';
                 if (Array.isArray(value)) {
-                    content += '[' + value.join(', ') + ']';
+                    content += '['  + value.map(v => '<span style="background: #e8eeff; padding: 2px 6px; border-radius: 3px; margin-right: 4px; display: inline-block;">' + (typeof v === 'string' ? v.substring(0, 100) : String(v)) + '</span>').join(' ') + ']';
                 } else {
-                    content += value;
+                    content += typeof value === 'string' ? value.substring(0, 200) : String(value);
                 }
                 content += '</div>';
+                content += '</div>';
+                fieldIndex++;
             }
             content += '</div>';
         }

@@ -97,12 +97,17 @@
         formData.pages.forEach((page, index) => {
             const $page = $('<div class="page-item" data-index="' + index + '">');
             $page.append('<span>Page ' + (index + 1) + '</span>');
-            $page.append('<button type="button" class="button-small delete-page">×</button>');
-            $page.on('click', function () {
-                if (!$(this).hasClass('active')) {
-                    currentPageIndex = index;
-                    renderPages();
-                    renderCurrentPage();
+            $page.append('<button type="button" class="button-small delete-page" title="Delete page">×</button>');
+
+            // Page selection click handler
+            $page.on('click', function (e) {
+                if (!$(e.target).hasClass('delete-page')) {
+                    if (!$(this).hasClass('active')) {
+                        currentPageIndex = index;
+                        currentFieldIndex = null;
+                        renderPages();
+                        renderCurrentPage();
+                    }
                 }
             });
 
@@ -112,6 +117,28 @@
 
             $list.append($page);
         });
+
+        // Attach delete handlers after rendering
+        setTimeout(() => {
+            $('.delete-page').on('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const pageIdx = $(this).closest('.page-item').data('index');
+                if (confirm('Are you sure you want to delete this page? All fields will be removed.')) {
+                    if (formData.pages.length === 1) {
+                        alert('You must have at least one page');
+                        return;
+                    }
+                    formData.pages.splice(pageIdx, 1);
+                    if (currentPageIndex >= formData.pages.length) {
+                        currentPageIndex = formData.pages.length - 1;
+                    }
+                    currentFieldIndex = null;
+                    renderPages();
+                    renderCurrentPage();
+                }
+            });
+        }, 0);
     }
 
     /**
@@ -150,7 +177,7 @@
         const $field = $('<div class="field-item" data-index="' + index + '">');
 
         const $header = $('<div class="field-header">');
-        $header.append('<span class="field-label">' + (field.label || 'Unnamed Field') + '</span>');
+        $header.append('<span class="field-label">' + escapeHtml(field.label || 'Unnamed Field') + '</span>');
         $header.append('<span class="field-type">' + field.type + '</span>');
         $header.append('<button type="button" class="button-small edit-field">Edit</button>');
         $header.append('<button type="button" class="button-small delete-field">Delete</button>');
@@ -164,6 +191,7 @@
 
         $field.find('.delete-field').on('click', function () {
             formData.pages[currentPageIndex].fields.splice(index, 1);
+            currentFieldIndex = null;
             renderCurrentPage();
         });
 
@@ -174,6 +202,17 @@
      * Render page properties
      */
     function renderPageProperties() {
+        if (currentFieldIndex === null) {
+            renderPageSettings();
+        } else {
+            renderFieldProperties();
+        }
+    }
+
+    /**
+     * Render page settings
+     */
+    function renderPageSettings() {
         const $props = $('#page-properties');
         $props.empty();
 
@@ -181,9 +220,9 @@
         if (!page) return;
 
         const $webhook = $('<div class="property-group">');
-        $webhook.append('<h4>Webhook</h4>');
+        $webhook.append('<h4>Webhook Settings</h4>');
         $webhook.append('<label><input type="checkbox" id="webhook-enabled" ' + (page.webhook.enabled ? 'checked' : '') + '> Enable Webhook</label>');
-        $webhook.append('<input type="url" id="webhook-url" class="regular-text" placeholder="https://example.com/webhook" value="' + (page.webhook.url || '') + '">');
+        $webhook.append('<input type="url" id="webhook-url" class="regular-text" placeholder="https://example.com/webhook" value="' + escapeHtml(page.webhook.url || '') + '">');
 
         $('#webhook-enabled').on('change', function () {
             page.webhook.enabled = $(this).is(':checked');
@@ -197,7 +236,7 @@
 
         const $customJS = $('<div class="property-group">');
         $customJS.append('<h4>Custom JavaScript (Optional)</h4>');
-        $customJS.append('<textarea id="custom-js" class="large-text code" rows="5" placeholder="// Custom JS code here">' + (page.customJS || '') + '</textarea>');
+        $customJS.append('<textarea id="custom-js" class="large-text code" rows="5" placeholder="// Custom JS code here">' + escapeHtml(page.customJS || '') + '</textarea>');
 
         $('#custom-js').on('input', function () {
             page.customJS = $(this).val();
@@ -220,28 +259,32 @@
 
         $props.append('<h4>Field Properties</h4>');
 
-        // Label
+        // Label (required)
         const $label = $('<div class="property-item">');
-        $label.append('<label>Label</label>');
-        $label.append('<input type="text" id="field-label" class="regular-text" value="' + (field.label || '') + '">');
+        $label.append('<label>Label <span style="color: #ff3b30;">*</span></label>');
+        $label.append('<input type="text" id="field-label" class="regular-text" value="' + escapeHtml(field.label || '') + '">');
         $('#field-label').on('input', function () {
-            console.log('Updating field label to:', $(this).val());
             field.label = $(this).val();
-            console.log('Field label is now:', field.label);
             renderCurrentPage();
         });
         $props.append($label);
 
-        // Name
+        // Field Name (for form submission key)
         const $name = $('<div class="property-item">');
-        $name.append('<label>Field Name</label>');
-        $name.append('<input type="text" id="field-name" class="regular-text" value="' + (field.name || '') + '">');
+        $name.append('<label>Field Name <span style="font-size: 12px; color: #666;">(for submissions)</span></label>');
+        $name.append('<input type="text" id="field-name" class="regular-text" value="' + escapeHtml(field.name || '') + '" placeholder="auto-generated if empty">');
         $('#field-name').on('input', function () {
             field.name = $(this).val();
         });
         $props.append($name);
 
-        // Required
+        // Type (read-only)
+        const $type = $('<div class="property-item">');
+        $type.append('<label>Type</label>');
+        $type.append('<input type="text" class="regular-text" value="' + field.type + '" disabled>');
+        $props.append($type);
+
+        // Required checkbox
         const $required = $('<div class="property-item">');
         $required.append('<label><input type="checkbox" id="field-required" ' + (field.required ? 'checked' : '') + '> Required</label>');
         $('#field-required').on('change', function () {
@@ -251,8 +294,8 @@
 
         // Placeholder
         const $placeholder = $('<div class="property-item">');
-        $placeholder.append('<label>Placeholder</label>');
-        $placeholder.append('<input type="text" id="field-placeholder" class="regular-text" value="' + (field.placeholder || '') + '">');
+        $placeholder.append('<label>Placeholder Text</label>');
+        $placeholder.append('<input type="text" id="field-placeholder" class="regular-text" value="' + escapeHtml(field.placeholder || '') + '">');
         $('#field-placeholder').on('input', function () {
             field.placeholder = $(this).val();
         });
@@ -261,14 +304,18 @@
         // Options (for select, radio, checkbox)
         if (['select', 'radio', 'checkbox'].includes(field.type)) {
             const $options = $('<div class="property-item">');
-            $options.append('<label>Options (one per line)</label>');
+            $options.append('<label>Options <span style="font-size: 12px; color: #666;">(one per line)</span></label>');
             const optionsText = (field.options || []).join('\n');
-            $options.append('<textarea id="field-options" class="large-text" rows="5">' + optionsText + '</textarea>');
+            $options.append('<textarea id="field-options" class="large-text" rows="5" placeholder="Option 1&#10;Option 2&#10;Option 3">' + escapeHtml(optionsText) + '</textarea>');
             $('#field-options').on('input', function () {
-                field.options = $(this).val().split('\n').filter(o => o.trim());
+                field.options = $(this).val().split('\n').filter(o => o.trim()).map(o => o.trim());
             });
             $props.append($options);
         }
+
+        // Helper text
+        const $helper = $('<p class="property-helper">💡 Changes to label and options update immediately. Click Save Form to persist changes.</p>');
+        $props.append($helper);
     }
 
     /**
@@ -279,7 +326,7 @@
         if (!page) return;
 
         const field = {
-            id: 'field_' + Date.now(),
+            id: 'field_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
             name: '',
             label: 'New ' + type.charAt(0).toUpperCase() + type.slice(1) + ' Field',
             type: type,
@@ -307,6 +354,7 @@
 
         formData.pages.push(newPage);
         currentPageIndex = formData.pages.length - 1;
+        currentFieldIndex = null;
         renderPages();
         renderCurrentPage();
     }
@@ -328,18 +376,23 @@
             return;
         }
 
-        // Ensure all field properties are properly saved
+        // Validate at least one page with fields
+        let totalFields = 0;
+        formData.pages.forEach(page => totalFields += (page.fields || []).length);
+
+        if (totalFields === 0) {
+            alert('Please add at least one field to the form');
+            return;
+        }
+
+        // Sanitize all field properties before saving
         formData.pages.forEach(function (page, pageIndex) {
-            console.log('Processing page', pageIndex, 'with', page.fields.length, 'fields');
             page.fields.forEach(function (field, fieldIndex) {
-                console.log('Field', fieldIndex, 'before save:', JSON.stringify(field));
-                // Make sure all properties exist and are strings/booleans as expected
                 field.label = field.label || '';
                 field.name = field.name || '';
                 field.placeholder = field.placeholder || '';
                 field.required = !!field.required;
-                field.options = field.options || [];
-                console.log('Field', fieldIndex, 'after save:', JSON.stringify(field));
+                field.options = Array.isArray(field.options) ? field.options : [];
             });
         });
 
@@ -349,8 +402,6 @@
             form_config: formData,
             nonce: formBuilderAdmin.saveNonce
         };
-
-        console.log('Saving form data:', JSON.stringify(data, null, 2));
 
         // Check if editing
         const urlParams = new URLSearchParams(window.location.search);
@@ -374,7 +425,8 @@
                 }
             },
             error: function (xhr) {
-                alert('Error saving form: ' + (xhr.responseJSON?.message || 'Unknown error'));
+                const errorMsg = xhr.responseJSON?.message || xhr.responseText || 'Unknown error';
+                alert('Error saving form: ' + errorMsg);
             }
         });
     }
@@ -396,41 +448,47 @@
                 if (response.forms && response.forms.length > 0) {
                     response.forms.forEach(function (form) {
                         const pagesCount = form.form_config?.pages?.length || 0;
+                        let fieldsCount = 0;
+                        if (form.form_config?.pages) {
+                            form.form_config.pages.forEach(p => fieldsCount += (p.fields || []).length);
+                        }
+
                         const $row = $('<tr>');
-                        $row.append('<td>' + form.form_name + '</td>');
-                        $row.append('<td>' + form.form_slug + '</td>');
-                        $row.append('<td>' + pagesCount + '</td>');
-                        $row.append('<td>' + form.updated_at + '</td>');
+                        $row.append('<td>' + escapeHtml(form.form_name) + '</td>');
+                        $row.append('<td>' + escapeHtml(form.form_slug) + '</td>');
+                        $row.append('<td>' + pagesCount + ' page(s)</td>');
+                        $row.append('<td>' + fieldsCount + ' field(s)</td>');
+                        $row.append('<td>' + new Date(form.updated_at).toLocaleDateString() + '</td>');
                         $row.append('<td><a href="' + formBuilderAdmin.adminUrl + '?page=form-builder&action=edit&form_id=' + form.id + '">Edit</a> | <a href="#" class="delete-form" data-id="' + form.id + '">Delete</a></td>');
                         $tbody.append($row);
                     });
-                } else {
-                    $tbody.append('<tr><td colspan="5">No forms found. <a href="' + formBuilderAdmin.adminUrl + '?page=form-builder-new">Create one</a></td></tr>');
-                }
 
-                // Delete handler
-                $('.delete-form').on('click', function (e) {
-                    e.preventDefault();
-                    if (confirm('Are you sure you want to delete this form?')) {
-                        const formId = $(this).data('id');
-                        $.ajax({
-                            url: formBuilderAdmin.apiUrl + 'forms/' + formId,
-                            method: 'DELETE',
-                            beforeSend: function (xhr) {
-                                xhr.setRequestHeader('X-WP-Nonce', formBuilderAdmin.nonce);
-                            },
-                            success: function () {
-                                loadFormsList();
-                            },
-                            error: function () {
-                                alert('Error deleting form');
-                            }
-                        });
-                    }
-                });
+                    // Delete handler
+                    $('.delete-form').on('click', function (e) {
+                        e.preventDefault();
+                        if (confirm('Are you sure you want to delete this form? This action cannot be undone.')) {
+                            const formId = $(this).data('id');
+                            $.ajax({
+                                url: formBuilderAdmin.apiUrl + 'forms/' + formId,
+                                method: 'DELETE',
+                                beforeSend: function (xhr) {
+                                    xhr.setRequestHeader('X-WP-Nonce', formBuilderAdmin.nonce);
+                                },
+                                success: function () {
+                                    loadFormsList();
+                                },
+                                error: function () {
+                                    alert('Error deleting form');
+                                }
+                            });
+                        }
+                    });
+                } else {
+                    $tbody.append('<tr><td colspan="6">No forms found. <a href="' + formBuilderAdmin.adminUrl + '?page=form-builder-new">Create one</a></td></tr>');
+                }
             },
             error: function () {
-                $('#forms-list').html('<tr><td colspan="5">Error loading forms</td></tr>');
+                $('#forms-list').html('<tr><td colspan="6">Error loading forms</td></tr>');
             }
         });
     }
@@ -445,6 +503,20 @@
             .replace(/\-\-+/g, '-')
             .replace(/^-+/, '')
             .replace(/-+$/, '');
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     */
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, m => map[m]);
     }
 
 })(jQuery);

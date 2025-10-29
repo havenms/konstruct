@@ -164,6 +164,10 @@
                 fieldElement = this.formElement.querySelector('[name="' + field.name + '[]"]');
             }
             if (!fieldElement) {
+                // Try finding by field id if name doesn't match
+                fieldElement = this.formElement.querySelector('[data-field-id="' + field.id + '"] input, [data-field-id="' + field.id + '"] textarea, [data-field-id="' + field.id + '"] select');
+            }
+            if (!fieldElement) {
                 return;
             }
 
@@ -189,6 +193,8 @@
                     value = radio ? radio.value : '';
                 } else if (field.type === 'file') {
                     value = fieldElement.files.length > 0;
+                } else {
+                    value = fieldElement.value;
                 }
 
                 if (!value || (typeof value === 'string' && value.trim() === '')) {

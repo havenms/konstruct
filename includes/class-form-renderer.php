@@ -163,12 +163,51 @@ class Form_Builder_Renderer {
      * Render text input
      */
     private function render_input($id, $name, $type, $required, $placeholder) {
+        // Map field names to autocomplete attributes
+        $autocomplete_map = array(
+            'email' => 'email',
+            'phone' => 'tel',
+            'name' => 'name',
+            'first' => 'given-name',
+            'last' => 'family-name',
+            'address' => 'street-address',
+            'city' => 'address-level2',
+            'state' => 'address-level1',
+            'zip' => 'postal-code',
+            'country' => 'country-name',
+            'company' => 'organization',
+            'password' => 'current-password',
+            'url' => 'url',
+            'username' => 'username',
+        );
+
+        $autocomplete = 'off';
+        $input_type = $type;
+        
+        // Detect autocomplete based on field name
+        $name_lower = strtolower($name);
+        foreach ($autocomplete_map as $key => $attr) {
+            if (strpos($name_lower, $key) !== false) {
+                $autocomplete = $attr;
+                break;
+            }
+        }
+
+        // Map field type to autocomplete
+        if ($type === 'email') {
+            $autocomplete = 'email';
+        } elseif ($type === 'tel') {
+            $autocomplete = 'tel';
+        } elseif ($type === 'url') {
+            $autocomplete = 'url';
+        }
         ?>
         <input 
-            type="<?php echo esc_attr($type); ?>" 
+            type="<?php echo esc_attr($input_type); ?>" 
             id="<?php echo esc_attr($id); ?>" 
             name="<?php echo esc_attr($name); ?>" 
             class="form-builder-input"
+            autocomplete="<?php echo esc_attr($autocomplete); ?>"
             <?php echo $required ? 'required' : ''; ?>
             <?php echo $placeholder ? 'placeholder="' . esc_attr($placeholder) . '"' : ''; ?>
         />
