@@ -210,8 +210,15 @@ $total_pages = ceil($total_submissions / $per_page);
                                     $fields = array_slice(array_keys($submission['form_data']), 0, 3);
                                     $data_preview = implode(', ', array_map(function($field) use ($submission) {
                                         $value = $submission['form_data'][$field];
-                                        if (is_array($value)) $value = implode(', ', $value);
-                                        return $field . ': ' . (strlen($value) > 20 ? substr($value, 0, 20) . '...' : $value);
+                                        if (is_array($value)) {
+                                            // If file meta, show filename
+                                            if (isset($value['name'])) {
+                                                $value = $value['name'];
+                                            } else {
+                                                $value = implode(', ', $value);
+                                            }
+                                        }
+                                        return $field . ': ' . (is_string($value) && strlen($value) > 20 ? substr($value, 0, 20) . '...' : (is_string($value) ? $value : ''));
                                     }, $fields));
                                 }
                                 ?>
@@ -325,6 +332,9 @@ jQuery(document).ready(function($) {
                 content += '<div style="color: #374151; word-break: break-word; font-family: monospace; font-size: 13px; padding: 6px 8px; background: white; border-radius: 4px; border-left: 3px solid #0071e3;">';
                 if (Array.isArray(value)) {
                     content += '['  + value.map(v => '<span style="background: #e8eeff; padding: 2px 6px; border-radius: 3px; margin-right: 4px; display: inline-block;">' + (typeof v === 'string' ? v.substring(0, 100) : String(v)) + '</span>').join(' ') + ']';
+                } else if (value && typeof value === 'object' && value.url) {
+                    const label = value.name || 'Download file';
+                    content += '<a href="' + value.url + '" target="_blank" rel="noopener" class="button">' + label + '</a>';
                 } else {
                     content += typeof value === 'string' ? value.substring(0, 200) : String(value);
                 }

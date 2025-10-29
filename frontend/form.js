@@ -367,17 +367,29 @@
     FormBuilderInstance.prototype.saveSubmissionToDatabase = function () {
         const self = this;
 
+        // Build multipart FormData to include actual files
+        const fd = new FormData();
+        fd.append('form_id', this.formId);
+        if (this.submissionUuid) fd.append('submission_uuid', this.submissionUuid);
+
+        // Append non-file data as a JSON blob for reliability
+        fd.append('formData', JSON.stringify(this.formData));
+
+        // Append files from the form
+        const fileInputs = this.formElement.querySelectorAll('input[type="file"]');
+        fileInputs.forEach(function (input) {
+            if (input.name && input.files && input.files.length > 0) {
+                // Only handle first file (single file field)
+                fd.append(input.name, input.files[0]);
+            }
+        });
+
         fetch(formBuilderFrontend.apiUrl + 'submissions', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'X-WP-Nonce': formBuilderFrontend.nonce
             },
-            body: JSON.stringify({
-                form_id: this.formId,
-                submission_uuid: this.submissionUuid,
-                formData: this.formData
-            })
+            body: fd
         })
             .then(function (response) {
                 return response.json();
@@ -395,6 +407,22 @@
     FormBuilderInstance.prototype.sendWebhook = function (url, pageNumber, isFinal = false) {
         const self = this;
 
+        // Include protected file URLs for file fields in webhook payload
+        const payloadData = Object.assign({}, this.formData);
+        const files = this.formElement.querySelectorAll('input[type="file"]');
+        files.forEach(function (input) {
+            if (!input.name) return;
+            if (input.files && input.files.length > 0) {
+                // Construct protected URL using REST route and current submission UUID
+                if (!self.submissionUuid) return;
+                const url = formBuilderFrontend.apiUrl + 'file?submission_uuid=' + encodeURIComponent(self.submissionUuid) + '&field=' + encodeURIComponent(input.name);
+                payloadData[input.name] = {
+                    url: url,
+                    name: input.files[0].name
+                };
+            }
+        });
+
         fetch(formBuilderFrontend.apiUrl + 'webhook', {
             method: 'POST',
             headers: {
@@ -406,7 +434,7 @@
                 submission_uuid: this.submissionUuid,
                 page_number: pageNumber,
                 webhook_url: url,
-                formData: this.formData
+                formData: payloadData
             })
         })
             .then(function (response) {

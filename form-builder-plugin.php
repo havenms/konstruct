@@ -143,6 +143,26 @@ class Form_Builder_Microsaas {
         
         // Set version option
         update_option('form_builder_version', FORM_BUILDER_VERSION);
+
+        // Ensure protected uploads directory exists with server-side protection
+        $uploads = wp_upload_dir();
+        $form_data_dir = trailingslashit($uploads['basedir']) . 'form_data';
+        if (!file_exists($form_data_dir)) {
+            wp_mkdir_p($form_data_dir);
+        }
+
+        // Add .htaccess to block direct access (for Apache environments)
+        $htaccess_path = trailingslashit($form_data_dir) . '.htaccess';
+        if (!file_exists($htaccess_path)) {
+            $rules = "# Deny direct access to uploaded form files\nDeny from all\n";
+            @file_put_contents($htaccess_path, $rules);
+        }
+
+        // Add index.php to prevent directory listing
+        $index_path = trailingslashit($form_data_dir) . 'index.php';
+        if (!file_exists($index_path)) {
+            @file_put_contents($index_path, "<?php\n// Silence is golden.\n");
+        }
     }
     
     /**
@@ -254,6 +274,23 @@ class Form_Builder_Microsaas {
             'callback' => array($this, 'get_submissions'),
             'permission_callback' => array($this, 'check_admin_permission'),
         ));
+
+        // Protected file download route (admins only)
+        register_rest_route('form-builder/v1', '/file', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'download_file'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+            'args' => array(
+                'submission_uuid' => array(
+                    'required' => true,
+                    'type' => 'string',
+                ),
+                'field' => array(
+                    'required' => true,
+                    'type' => 'string',
+                ),
+            ),
+        ));
     }
     
     /**
@@ -338,25 +375,57 @@ class Form_Builder_Microsaas {
      * Save submission
      */
     public function save_submission($request) {
-        $params = $request->get_json_params();
-
-        // Debug logging
-        error_log('Submission save request received: ' . json_encode($params));
+        // Support multipart (files) and JSON bodies
+        $is_multipart = strpos($request->get_header('content-type'), 'multipart/form-data') !== false;
+        if ($is_multipart) {
+            // For multipart, parameters come from $request->get_param and files from $_FILES
+            $form_id = intval($request->get_param('form_id'));
+            $submission_uuid = $request->get_param('submission_uuid');
+            $submission_uuid = $submission_uuid ? sanitize_text_field($submission_uuid) : $this->generate_uuid();
+            // formData fields are sent as flattened key/value pairs
+            $form_data = array();
+            $raw = $request->get_params();
+            if (isset($raw['formData']) && is_string($raw['formData'])) {
+                // If frontend sent JSON blob for formData
+                $decoded = json_decode($raw['formData'], true);
+                if (is_array($decoded)) {
+                    $form_data = $decoded;
+                }
+            } else {
+                // Collect non-file params except internal REST params
+                foreach ($raw as $key => $val) {
+                    if (in_array($key, array('form_id', 'submission_uuid', 'rest_route'))) {
+                        continue;
+                    }
+                    if (!isset($_FILES[$key])) {
+                        $form_data[$key] = is_array($val) ? array_map('sanitize_text_field', $val) : sanitize_text_field($val);
+                    }
+                }
+            }
+        } else {
+            $params = $request->get_json_params();
+            // Debug logging
+            error_log('Submission save request received: ' . json_encode($params));
+            if (empty($params['form_id']) || !isset($params['formData'])) {
+                return new WP_Error(
+                    'missing_params',
+                    'form_id and formData are required',
+                    array('status' => 400)
+                );
+            }
+            $form_id = intval($params['form_id']);
+            $form_data = $params['formData'];
+            $submission_uuid = isset($params['submission_uuid']) ? sanitize_text_field($params['submission_uuid']) : $this->generate_uuid();
+        }
 
         // Validate required parameters
-        if (empty($params['form_id']) || !isset($params['formData'])) {
+        if (empty($form_id)) {
             return new WP_Error(
                 'missing_params',
-                'form_id and formData are required',
+                'form_id is required',
                 array('status' => 400)
             );
         }
-
-        $form_id = intval($params['form_id']);
-        $form_data = $params['formData'];
-        $submission_uuid = isset($params['submission_uuid']) ? sanitize_text_field($params['submission_uuid']) : $this->generate_uuid();
-
-        error_log('Processing submission - Form ID: ' . $form_id . ', UUID: ' . $submission_uuid . ', Data: ' . json_encode($form_data));
 
         // Validate form exists
         $storage = new Form_Builder_Storage();
@@ -369,13 +438,21 @@ class Form_Builder_Microsaas {
             );
         }
 
-        // Save submission
+        // Handle file uploads if multipart
+        if ($is_multipart && !empty($_FILES)) {
+            $form_data = $this->process_uploads_and_enrich_form_data($submission_uuid, $form_data, $_FILES);
+            if (is_wp_error($form_data)) {
+                return $form_data;
+            }
+        }
+
+        // Save submission with enriched form_data (with file links)
         $submission_id = $storage->insert_submission(
             $form_id,
             $submission_uuid,
-            count($form['form_config']['pages']), // Final page
+            count($form['form_config']['pages']),
             $form_data,
-            true // Mark as delivered since it's a direct save
+            true
         );
 
         if (!$submission_id) {
@@ -391,6 +468,136 @@ class Form_Builder_Microsaas {
             'submission_id' => $submission_id,
             'submission_uuid' => $submission_uuid
         ), 200);
+    }
+
+    /**
+     * Protected download
+     */
+    public function download_file($request) {
+        $submission_uuid = sanitize_text_field($request->get_param('submission_uuid'));
+        $field = sanitize_text_field($request->get_param('field'));
+
+        if (empty($submission_uuid) || empty($field)) {
+            return new WP_Error('bad_request', 'Missing parameters', array('status' => 400));
+        }
+
+        global $wpdb;
+        $row = $wpdb->get_row($wpdb->prepare(
+            "SELECT form_data FROM {$wpdb->prefix}form_builder_submissions WHERE submission_uuid = %s",
+            $submission_uuid
+        ), ARRAY_A);
+
+        if (!$row) {
+            return new WP_Error('not_found', 'Submission not found', array('status' => 404));
+        }
+
+        $data = json_decode($row['form_data'], true);
+        if (!isset($data[$field]) || !is_array($data[$field]) || empty($data[$field]['path'])) {
+            return new WP_Error('not_found', 'File not found for field', array('status' => 404));
+        }
+
+        $file_meta = $data[$field];
+        $path = $file_meta['path'];
+
+        // Ensure path is inside uploads/form_data
+        $uploads = wp_upload_dir();
+        $base = realpath(trailingslashit($uploads['basedir']) . 'form_data');
+        $real = realpath($path);
+        if ($base === false || $real === false || strpos($real, $base) !== 0 || !file_exists($real)) {
+            return new WP_Error('forbidden', 'Access denied', array('status' => 403));
+        }
+
+        // Serve file
+        $mime = isset($file_meta['mime']) ? $file_meta['mime'] : 'application/octet-stream';
+        $filename = isset($file_meta['name']) ? $file_meta['name'] : basename($real);
+
+        header('Content-Type: ' . $mime);
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . filesize($real));
+        readfile($real);
+        exit;
+    }
+
+    /**
+     * Process uploads: validate, move to uploads/form_data, and replace fields with metadata and protected URLs.
+     */
+    private function process_uploads_and_enrich_form_data($submission_uuid, $form_data, $files) {
+        $uploads = wp_upload_dir();
+        $target_dir = trailingslashit($uploads['basedir']) . 'form_data';
+        if (!file_exists($target_dir)) {
+            wp_mkdir_p($target_dir);
+        }
+
+        // Security: allowed mimes and size cap (10MB)
+        $max_bytes = 10 * 1024 * 1024;
+        $allowed = array(
+            'pdf' => 'application/pdf',
+            'png' => 'image/png',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'txt' => 'text/plain',
+            'csv' => 'text/csv',
+            'zip' => 'application/zip',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'ppt' => 'application/vnd.ms-powerpoint',
+            'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        );
+
+        foreach ($files as $field => $file) {
+            if (empty($file['name']) || $file['error'] === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+            if ($file['error'] !== UPLOAD_ERR_OK) {
+                return new WP_Error('upload_error', 'Failed to upload file for ' . $field, array('status' => 400));
+            }
+            if ($file['size'] > $max_bytes) {
+                return new WP_Error('file_too_large', 'File too large for ' . $field, array('status' => 413));
+            }
+
+            $check = wp_check_filetype_and_ext($file['tmp_name'], $file['name']);
+            $ext = isset($check['ext']) ? $check['ext'] : '';
+            $type = isset($check['type']) ? $check['type'] : '';
+            if (empty($ext) || empty($type) || !isset($allowed[$ext]) || $allowed[$ext] !== $type) {
+                return new WP_Error('invalid_type', 'Invalid file type for ' . $field, array('status' => 415));
+            }
+
+            // Sanitize and generate unique file name
+            $safe_name = sanitize_file_name($file['name']);
+            $unique = $submission_uuid . '-' . wp_generate_password(8, false, false) . '-' . $safe_name;
+            $dest = trailingslashit($target_dir) . $unique;
+
+            if (!@move_uploaded_file($file['tmp_name'], $dest)) {
+                // Fallback to WP handle upload
+                $overrides = array('test_form' => false);
+                $handled = wp_handle_upload($file, $overrides);
+                if (isset($handled['error'])) {
+                    return new WP_Error('upload_move_failed', $handled['error'], array('status' => 500));
+                }
+                // Move from default uploads to our protected dir
+                $moved = @rename($handled['file'], $dest);
+                if (!$moved) {
+                    return new WP_Error('upload_move_failed', 'Could not secure file location', array('status' => 500));
+                }
+            }
+
+            // Build protected URL via our REST route (admin-only)
+            $protected_url = add_query_arg(array(
+                'submission_uuid' => rawurlencode($submission_uuid),
+                'field' => rawurlencode($field),
+            ), rest_url('form-builder/v1/file'));
+
+            $form_data[$field] = array(
+                'name' => $safe_name,
+                'mime' => $type,
+                'size' => filesize($dest),
+                'path' => $dest,
+                'url' => $protected_url,
+            );
+        }
+
+        return $form_data;
     }
 
     /**
