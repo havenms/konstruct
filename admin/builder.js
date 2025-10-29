@@ -266,7 +266,11 @@
         // Bind after append
         $('#field-label').off('input').on('input', function () {
             field.label = $(this).val();
-            renderCurrentPage();
+            // Update label text in the grid without full re-render to keep focus
+            const $gridItem = $('.field-item[data-index="' + currentFieldIndex + '"] .field-header .field-label');
+            if ($gridItem.length) {
+                $gridItem.text(field.label || 'Unnamed Field');
+            }
         });
 
         // Field Name (for form submission key)
