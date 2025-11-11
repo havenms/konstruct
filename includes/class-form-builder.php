@@ -41,7 +41,18 @@ class Form_Builder_Builder {
                     'recipient_field' => '',
                     'include_admin' => true,
                     'subject' => 'Form Step Completed - {{form_name}}',
-                    'message' => 'Hello,\n\nStep {{page_number}} of the form "{{form_name}}" has been completed.\n\nCompleted on: {{date}}\nSubmission ID: {{submission_uuid}}\n\nThe data submitted in this step is included below.\n\nBest regards,\n{{site_name}}'
+                    'message' => 'Hello,
+
+A step has been completed in the form "{{form_name}}".
+
+Step {{page_number}} was completed on {{date}}.
+
+Submission ID: {{submission_uuid}}
+
+{{dynamic_fields}}
+
+Best regards,
+{{site_name}}'
                 ),
                 'submission_notifications' => array(
                     'enabled' => false,
@@ -49,7 +60,18 @@ class Form_Builder_Builder {
                     'recipient_field' => '',
                     'include_admin' => true,
                     'subject' => 'New Form Submission - {{form_name}}',
-                    'message' => 'Hello,\n\nA new form submission has been received for "{{form_name}}".\n\nSubmitted on: {{date}}\nSubmission ID: {{submission_uuid}}\n\nThe complete form data is included below.\n\nBest regards,\n{{site_name}}'
+                    'message' => 'Hello,
+
+A new form submission has been received for "{{form_name}}".
+
+Submitted on: {{date}}.
+
+Submission ID: {{submission_uuid}}
+
+{{dynamic_fields}}
+
+Best regards,
+{{site_name}}'
                 )
             )
         );

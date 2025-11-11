@@ -45,20 +45,42 @@
             console.log('Form Builder: Initializing notification settings...');
             formData.notifications = {
                 step_notifications: {
-                    enabled: false,
+                    enabled: true,
                     recipients: '',
                     recipient_field: '',
                     include_admin: true,
                     subject: 'Form Step Completed - {{form_name}}',
-                    message: 'Hello,\\n\\nStep {{page_number}} of the form "{{form_name}}" has been completed.\\n\\nCompleted on: {{date}}\\nSubmission ID: {{submission_uuid}}\\n\\nThe data submitted in this step is included below.\\n\\nBest regards,\\n{{site_name}}'
+                    message: `Hello,
+
+A step has been completed in the form "{{form_name}}".
+
+Step {{page_number}} was completed on {{date}}.
+
+Submission ID: {{submission_uuid}}
+
+{{dynamic_fields}}
+
+Best regards,
+{{site_name}}`
                 },
                 submission_notifications: {
-                    enabled: false,
+                    enabled: true,
                     recipients: '',
                     recipient_field: '',
                     include_admin: true,
                     subject: 'New Form Submission - {{form_name}}',
-                    message: 'Hello,\\n\\nA new form submission has been received for "{{form_name}}".\\n\\nSubmitted on: {{date}}\\nSubmission ID: {{submission_uuid}}\\n\\nThe complete form data is included below.\\n\\nBest regards,\\n{{site_name}}'
+                    message: `Hello,
+
+A new form submission has been received for "{{form_name}}".
+
+Submitted on: {{date}}.
+
+Submission ID: {{submission_uuid}}
+
+{{dynamic_fields}}
+
+Best regards,
+{{site_name}}`
                 }
             };
         }
@@ -389,9 +411,19 @@
 
         // Email placeholders help
         const $placeholders = $('<div class="property-group">');
-        $placeholders.append('<h4>Available Placeholders & Form Data</h4>');
-        $placeholders.append('<p><small><strong>Placeholders:</strong> {{form_name}}, {{page_number}}, {{submission_uuid}}, {{date}}, {{site_name}}, {{site_url}}, {{admin_email}}, {{field_name}} (for any form field)</small></p>');
-        $placeholders.append('<p><small><strong>Form Data:</strong> Step emails include data from the current step only. Final submission emails include all form data. Form data is automatically included in a table below your message.</small></p>');
+        $placeholders.append('<h4>Available Placeholders</h4>');
+        $placeholders.append('<p><small><strong>System Placeholders:</strong> {{form_name}}, {{page_number}}, {{submission_uuid}}, {{date}}, {{site_name}}, {{site_url}}, {{admin_email}}</small></p>');
+        $placeholders.append('<p><small><strong>Dynamic Fields:</strong> Use {{dynamic_fields}} to automatically include all form fields from the current step, or use individual field placeholders like {{first_name}}, {{email}}, etc.</small></p>');
+        
+        // Generate current page field placeholders
+        const currentFields = getCurrentPageFields();
+        if (currentFields.length > 0) {
+            let fieldPlaceholders = '<p><small><strong>Current Page Field Placeholders:</strong> ';
+            fieldPlaceholders += currentFields.map(field => `{{${field.name || field.id}}}`).join(', ');
+            fieldPlaceholders += '</small></p>';
+            $placeholders.append(fieldPlaceholders);
+        }
+        
         $emailTab.append($placeholders);
 
         // Test email functionality
@@ -964,6 +996,16 @@
      */
     function showCopyError(shortcode) {
         alert('Failed to copy shortcode. Please copy manually: ' + shortcode);
+    }
+
+    /**
+     * Get fields from the current page
+     */
+    function getCurrentPageFields() {
+        if (!formData.pages || !formData.pages[currentPageIndex]) {
+            return [];
+        }
+        return formData.pages[currentPageIndex].fields || [];
     }
 
 })(jQuery);

@@ -262,16 +262,28 @@ class Form_Builder_Email_Handler {
             '{{date}}' => current_time('Y-m-d H:i:s'),
         );
         
-        // Add form data placeholders
+        // Generate dynamic fields list
+        $dynamic_fields = '';
         if (is_array($form_data)) {
             foreach ($form_data as $field_name => $field_value) {
+                // Format field name (convert underscores to spaces and capitalize)
+                $formatted_name = ucwords(str_replace('_', ' ', $field_name));
+                
                 if (is_string($field_value) || is_numeric($field_value)) {
+                    $dynamic_fields .= $formatted_name . ': ' . $field_value . "\n\n";
+                    // Also add individual field placeholders
                     $placeholders['{{' . $field_name . '}}'] = $field_value;
                 } elseif (is_array($field_value)) {
-                    $placeholders['{{' . $field_name . '}}'] = implode(', ', $field_value);
+                    $value = implode(', ', $field_value);
+                    $dynamic_fields .= $formatted_name . ': ' . $value . "\n\n";
+                    // Also add individual field placeholders
+                    $placeholders['{{' . $field_name . '}}'] = $value;
                 }
             }
         }
+        
+        // Add dynamic fields placeholder
+        $placeholders['{{dynamic_fields}}'] = trim($dynamic_fields);
         
         // Replace placeholders
         $content = str_replace(array_keys($placeholders), array_values($placeholders), $content);
