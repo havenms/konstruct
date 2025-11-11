@@ -76,6 +76,7 @@ class Form_Builder_Microsaas {
         require_once FORM_BUILDER_PLUGIN_DIR . 'includes/class-form-builder.php';
         require_once FORM_BUILDER_PLUGIN_DIR . 'includes/class-form-renderer.php';
         require_once FORM_BUILDER_PLUGIN_DIR . 'includes/class-webhook-handler.php';
+        require_once FORM_BUILDER_PLUGIN_DIR . 'includes/class-email-handler.php';
     }
     
     /**
@@ -462,6 +463,10 @@ class Form_Builder_Microsaas {
                 array('status' => 500)
             );
         }
+
+        // Send final submission email notification
+        $email_handler = new Form_Builder_Email_Handler();
+        $email_handler->send_submission_notification($form_id, $form_data, $submission_uuid);
 
         return new WP_REST_Response(array(
             'success' => true,

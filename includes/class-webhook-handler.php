@@ -11,9 +11,11 @@ if (!defined('ABSPATH')) {
 class Form_Builder_Webhook_Handler {
     
     private $storage;
+    private $email_handler;
     
     public function __construct() {
         $this->storage = new Form_Builder_Storage();
+        $this->email_handler = new Form_Builder_Email_Handler();
     }
     
     /**
@@ -125,6 +127,11 @@ class Form_Builder_Webhook_Handler {
             $response_time,
             isset($response['error']) ? $response['error'] : null
         );
+        
+        // Send email notification for step completion (if webhook was successful)
+        if (!isset($response['error'])) {
+            $this->email_handler->send_step_notification($form_id, $page_number, $form_data, $submission_uuid);
+        }
         
         // Return response
         if (isset($response['error'])) {

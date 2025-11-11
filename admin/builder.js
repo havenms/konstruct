@@ -35,6 +35,28 @@
             }];
         }
 
+        // Initialize notification settings if not present
+        if (!formData.notifications) {
+            formData.notifications = {
+                step_notifications: {
+                    enabled: false,
+                    recipients: '',
+                    recipient_field: '',
+                    include_admin: true,
+                    subject: 'Form Step Completed - {{form_name}}',
+                    message: 'Hello,\n\nA step has been completed in the form "{{form_name}}".\n\nStep {{page_number}} was completed on {{date}}.\n\nSubmission ID: {{submission_uuid}}\n\nBest regards,\n{{site_name}}'
+                },
+                submission_notifications: {
+                    enabled: false,
+                    recipients: '',
+                    recipient_field: '',
+                    include_admin: true,
+                    subject: 'New Form Submission - {{form_name}}',
+                    message: 'Hello,\n\nA new form submission has been received for "{{form_name}}".\n\nSubmitted on: {{date}}\nSubmission ID: {{submission_uuid}}\n\nPlease review the form data below.\n\nBest regards,\n{{site_name}}'
+                }
+            };
+        }
+
         // Normalize form data - ensure all fields have required properties
         formData.pages.forEach(function (page, pageIndex) {
             if (!page.fields) page.fields = [];
@@ -174,6 +196,13 @@
         $editor.append($pageEditor);
 
         renderPageProperties();
+        
+        // Update recipient field dropdowns after rendering (delayed to ensure DOM is ready)
+        setTimeout(function() {
+            if (typeof populateRecipientFields === 'function') {
+                populateRecipientFields();
+            }
+        }, 0);
     }
 
     /**
@@ -283,13 +312,81 @@
         const page = formData.pages[currentPageIndex];
         if (!page) return;
 
+        // Add tabs for different settings sections
+        const $tabs = $('<div class="form-builder-tabs">');
+        $tabs.append('<div class="tab-nav"><a href="#webhook-tab" class="tab-link active">Webhook</a><a href="#email-tab" class="tab-link">Email Notifications</a><a href="#js-tab" class="tab-link">Custom JS</a></div>');
+        $props.append($tabs);
+
+        // Webhook Settings Tab
+        const $webhookTab = $('<div id="webhook-tab" class="tab-content active">');
         const $webhook = $('<div class="property-group">');
         $webhook.append('<h4>Webhook Settings</h4>');
         $webhook.append('<label><input type="checkbox" id="webhook-enabled" ' + (page.webhook.enabled ? 'checked' : '') + '> Enable Webhook</label>');
         $webhook.append('<input type="url" id="webhook-url" class="regular-text" placeholder="https://example.com/webhook" value="' + escapeHtml(page.webhook.url || '') + '">');
-        $props.append($webhook);
+        $webhookTab.append($webhook);
+        $props.append($webhookTab);
 
-        // Bind after append so elements exist
+        // Email Notifications Tab
+        const $emailTab = $('<div id="email-tab" class="tab-content">');
+        
+        // Step Notifications
+        const $stepNotifications = $('<div class="property-group">');
+        $stepNotifications.append('<h4>Step Completion Notifications</h4>');
+        $stepNotifications.append('<label><input type="checkbox" id="step-notifications-enabled" ' + (formData.notifications.step_notifications.enabled ? 'checked' : '') + '> Enable step completion emails</label>');
+        
+        const $stepConfig = $('<div class="notification-config" style="' + (formData.notifications.step_notifications.enabled ? '' : 'display:none') + '">');
+        $stepConfig.append('<label>Recipients (comma-separated emails):<br><input type="text" id="step-recipients" class="regular-text" value="' + escapeHtml(formData.notifications.step_notifications.recipients || '') + '" placeholder="admin@example.com, user@example.com"></label>');
+        $stepConfig.append('<label>Or get recipient from field:<br><select id="step-recipient-field"><option value="">Select field...</option></select></label>');
+        $stepConfig.append('<label><input type="checkbox" id="step-include-admin" ' + (formData.notifications.step_notifications.include_admin ? 'checked' : '') + '> Include site admin email</label>');
+        $stepConfig.append('<label>Subject:<br><input type="text" id="step-subject" class="regular-text" value="' + escapeHtml(formData.notifications.step_notifications.subject || '') + '"></label>');
+        $stepConfig.append('<label>Message:<br><textarea id="step-message" class="large-text" rows="4">' + escapeHtml(formData.notifications.step_notifications.message || '') + '</textarea></label>');
+        $stepNotifications.append($stepConfig);
+        $emailTab.append($stepNotifications);
+
+        // Submission Notifications
+        const $submissionNotifications = $('<div class="property-group">');
+        $submissionNotifications.append('<h4>Final Submission Notifications</h4>');
+        $submissionNotifications.append('<label><input type="checkbox" id="submission-notifications-enabled" ' + (formData.notifications.submission_notifications.enabled ? 'checked' : '') + '> Enable final submission emails</label>');
+        
+        const $submissionConfig = $('<div class="notification-config" style="' + (formData.notifications.submission_notifications.enabled ? '' : 'display:none') + '">');
+        $submissionConfig.append('<label>Recipients (comma-separated emails):<br><input type="text" id="submission-recipients" class="regular-text" value="' + escapeHtml(formData.notifications.submission_notifications.recipients || '') + '" placeholder="admin@example.com, user@example.com"></label>');
+        $submissionConfig.append('<label>Or get recipient from field:<br><select id="submission-recipient-field"><option value="">Select field...</option></select></label>');
+        $submissionConfig.append('<label><input type="checkbox" id="submission-include-admin" ' + (formData.notifications.submission_notifications.include_admin ? 'checked' : '') + '> Include site admin email</label>');
+        $submissionConfig.append('<label>Subject:<br><input type="text" id="submission-subject" class="regular-text" value="' + escapeHtml(formData.notifications.submission_notifications.subject || '') + '"></label>');
+        $submissionConfig.append('<label>Message:<br><textarea id="submission-message" class="large-text" rows="4">' + escapeHtml(formData.notifications.submission_notifications.message || '') + '</textarea></label>');
+        $submissionNotifications.append($submissionConfig);
+        $emailTab.append($submissionNotifications);
+
+        // Email placeholders help
+        const $placeholders = $('<div class="property-group">');
+        $placeholders.append('<h4>Available Placeholders</h4>');
+        $placeholders.append('<p><small>{{form_name}}, {{page_number}}, {{submission_uuid}}, {{date}}, {{site_name}}, {{site_url}}, {{admin_email}}, {{field_name}} (for any form field)</small></p>');
+        $emailTab.append($placeholders);
+
+        $props.append($emailTab);
+
+        // Custom JavaScript Tab
+        const $jsTab = $('<div id="js-tab" class="tab-content">');
+        const $customJS = $('<div class="property-group">');
+        $customJS.append('<h4>Custom JavaScript (Optional)</h4>');
+        $customJS.append('<textarea id="custom-js" class="large-text code" rows="5" placeholder="// Custom JS code here">' + escapeHtml(page.customJS || '') + '</textarea>');
+        $jsTab.append($customJS);
+        $props.append($jsTab);
+
+        // Populate recipient field dropdowns with email fields from all pages
+        populateRecipientFields();
+
+        // Tab switching
+        $('.tab-link').off('click').on('click', function(e) {
+            e.preventDefault();
+            const target = $(this).attr('href');
+            $('.tab-link').removeClass('active');
+            $('.tab-content').removeClass('active');
+            $(this).addClass('active');
+            $(target).addClass('active');
+        });
+
+        // Bind webhook events
         $('#webhook-enabled').off('change').on('change', function () {
             page.webhook.enabled = $(this).is(':checked');
         });
@@ -297,15 +394,79 @@
             page.webhook.url = $(this).val();
         });
 
-        const $customJS = $('<div class="property-group">');
-        $customJS.append('<h4>Custom JavaScript (Optional)</h4>');
-        $customJS.append('<textarea id="custom-js" class="large-text code" rows="5" placeholder="// Custom JS code here">' + escapeHtml(page.customJS || '') + '</textarea>');
-        $props.append($customJS);
+        // Bind email notification events
+        $('#step-notifications-enabled').off('change').on('change', function () {
+            formData.notifications.step_notifications.enabled = $(this).is(':checked');
+            $(this).closest('.property-group').find('.notification-config').toggle($(this).is(':checked'));
+        });
 
-        // Bind after append
+        $('#submission-notifications-enabled').off('change').on('change', function () {
+            formData.notifications.submission_notifications.enabled = $(this).is(':checked');
+            $(this).closest('.property-group').find('.notification-config').toggle($(this).is(':checked'));
+        });
+
+        // Step notification field bindings
+        $('#step-recipients').off('input').on('input', function () {
+            formData.notifications.step_notifications.recipients = $(this).val();
+        });
+        $('#step-recipient-field').off('change').on('change', function () {
+            formData.notifications.step_notifications.recipient_field = $(this).val();
+        });
+        $('#step-include-admin').off('change').on('change', function () {
+            formData.notifications.step_notifications.include_admin = $(this).is(':checked');
+        });
+        $('#step-subject').off('input').on('input', function () {
+            formData.notifications.step_notifications.subject = $(this).val();
+        });
+        $('#step-message').off('input').on('input', function () {
+            formData.notifications.step_notifications.message = $(this).val();
+        });
+
+        // Submission notification field bindings
+        $('#submission-recipients').off('input').on('input', function () {
+            formData.notifications.submission_notifications.recipients = $(this).val();
+        });
+        $('#submission-recipient-field').off('change').on('change', function () {
+            formData.notifications.submission_notifications.recipient_field = $(this).val();
+        });
+        $('#submission-include-admin').off('change').on('change', function () {
+            formData.notifications.submission_notifications.include_admin = $(this).is(':checked');
+        });
+        $('#submission-subject').off('input').on('input', function () {
+            formData.notifications.submission_notifications.subject = $(this).val();
+        });
+        $('#submission-message').off('input').on('input', function () {
+            formData.notifications.submission_notifications.message = $(this).val();
+        });
+
+        // Bind custom JS events
         $('#custom-js').off('input').on('input', function () {
             page.customJS = $(this).val();
         });
+    }
+
+    /**
+     * Populate recipient field dropdowns with email fields
+     */
+    function populateRecipientFields() {
+        const $stepField = $('#step-recipient-field');
+        const $submissionField = $('#submission-recipient-field');
+        
+        $stepField.empty().append('<option value="">Select field...</option>');
+        $submissionField.empty().append('<option value="">Select field...</option>');
+        
+        formData.pages.forEach(function(page) {
+            page.fields.forEach(function(field) {
+                if (field.type === 'email') {
+                    $stepField.append('<option value="' + escapeHtml(field.name) + '">' + escapeHtml(field.label) + '</option>');
+                    $submissionField.append('<option value="' + escapeHtml(field.name) + '">' + escapeHtml(field.label) + '</option>');
+                }
+            });
+        });
+        
+        // Set current values
+        $stepField.val(formData.notifications.step_notifications.recipient_field || '');
+        $submissionField.val(formData.notifications.submission_notifications.recipient_field || '');
     }
 
     /**
