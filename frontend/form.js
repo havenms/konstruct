@@ -42,8 +42,8 @@
         // Load saved data from localStorage (after DOM is ready)
         this.loadSavedData();
 
-        // Show correct page after loading saved data
-        this.showPage(this.currentPage);
+        // Show correct page after loading saved data (no scroll on initial load)
+        this.showPage(this.currentPage, false);
     }
 
     FormBuilderInstance.prototype.init = function () {
@@ -289,7 +289,7 @@
         }
     };
 
-    FormBuilderInstance.prototype.showPage = function (pageNumber) {
+    FormBuilderInstance.prototype.showPage = function (pageNumber, shouldScroll) {
         const pages = this.formElement.querySelectorAll('.form-builder-page');
         pages.forEach(function (page, index) {
             if (index + 1 === pageNumber) {
@@ -302,8 +302,10 @@
         this.updateButtons();
         this.updateProgress();
 
-        // Scroll to form container (not top of page) for better UX when embedded
-        this.container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Only scroll when navigating between pages (not on initial load)
+        if (shouldScroll !== false) {
+            this.container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     };
 
     FormBuilderInstance.prototype.updateButtons = function () {
