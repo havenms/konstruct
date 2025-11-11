@@ -85,6 +85,12 @@
                 $('#form-slug').val(slugify($(this).val()));
             }
         });
+
+        // Copy shortcode button (for form editor)
+        $(document).on('click', '#copy-shortcode', function() {
+            const formId = $(this).data('form-id');
+            copyShortcodeToClipboard(formId);
+        });
     }
 
     /**
@@ -429,6 +435,12 @@
                 alert('Form saved successfully!');
                 if (!formId) {
                     window.location.href = formBuilderAdmin.adminUrl + '?page=form-builder&action=edit&form_id=' + response.id;
+                } else {
+                    // Update the copy shortcode button if it exists
+                    const $copyBtn = $('#copy-shortcode');
+                    if ($copyBtn.length && response.id) {
+                        $copyBtn.attr('data-form-id', response.id);
+                    }
                 }
             },
             error: function (xhr) {
@@ -466,7 +478,8 @@
                         $row.append('<td>' + pagesCount + ' page(s)</td>');
                         $row.append('<td>' + fieldsCount + ' field(s)</td>');
                         $row.append('<td>' + new Date(form.updated_at).toLocaleDateString() + '</td>');
-                        $row.append('<td><a href="' + formBuilderAdmin.adminUrl + '?page=form-builder&action=edit&form_id=' + form.id + '">Edit</a> | <a href="#" class="delete-form" data-id="' + form.id + '">Delete</a></td>');
+                        const actionsHtml = '<a href="' + formBuilderAdmin.adminUrl + '?page=form-builder&action=edit&form_id=' + form.id + '">Edit</a> | <a href="#" class="delete-form" data-id="' + form.id + '">Delete</a> | <button type="button" class="copy-shortcode-link" data-form-id="' + form.id + '">Copy Shortcode</button>';
+                        $row.append('<td>' + actionsHtml + '</td>');
                         $tbody.append($row);
                     });
 
@@ -489,6 +502,13 @@
                                 }
                             });
                         }
+                    });
+
+                    // Copy shortcode handler (for forms list)
+                    $(document).on('click', '.copy-shortcode-link', function (e) {
+                        e.preventDefault();
+                        const formId = $(this).data('form-id');
+                        copyShortcodeToClipboard(formId);
                     });
                 } else {
                     $tbody.append('<tr><td colspan="6">No forms found. <a href="' + formBuilderAdmin.adminUrl + '?page=form-builder-new">Create one</a></td></tr>');
@@ -524,6 +544,80 @@
             "'": '&#039;'
         };
         return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    /**
+     * Copy shortcode to clipboard
+     */
+    function copyShortcodeToClipboard(formId) {
+        const shortcode = '[form_builder id="' + formId + '"]';
+        
+        // Try modern clipboard API first
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(shortcode).then(function() {
+                showCopySuccess();
+            }).catch(function(err) {
+                // Fallback to older method
+                fallbackCopyToClipboard(shortcode);
+            });
+        } else {
+            // Fallback for older browsers
+            fallbackCopyToClipboard(shortcode);
+        }
+    }
+
+    /**
+     * Fallback copy method for older browsers
+     */
+    function fallbackCopyToClipboard(text) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                showCopySuccess();
+            } else {
+                showCopyError(text);
+            }
+        } catch (err) {
+            showCopyError(text);
+        }
+        
+        document.body.removeChild(textArea);
+    }
+
+    /**
+     * Show copy success feedback
+     */
+    function showCopySuccess() {
+        // Create or update success message
+        let $message = $('#copy-shortcode-message');
+        if ($message.length === 0) {
+            $message = $('<div id="copy-shortcode-message" style="position: fixed; top: 32px; right: 32px; background: var(--color-success); color: white; padding: 12px 20px; border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 10000; font-weight: 500; font-size: 14px; display: flex; align-items: center; gap: 8px;"></div>');
+            $('body').append($message);
+        }
+        
+        $message.html('✓ Shortcode copied to clipboard!').fadeIn();
+        
+        setTimeout(function() {
+            $message.fadeOut(function() {
+                $message.remove();
+            });
+        }, 2000);
+    }
+
+    /**
+     * Show copy error feedback
+     */
+    function showCopyError(shortcode) {
+        alert('Failed to copy shortcode. Please copy manually: ' + shortcode);
     }
 
 })(jQuery);

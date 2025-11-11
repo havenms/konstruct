@@ -229,6 +229,51 @@
     background: #e8e8e8;
 }
 
+.form-builder-actions .button-secondary {
+    background: var(--color-secondary);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+.form-builder-actions .button-secondary:hover {
+    background: #e8e8e8;
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.copy-shortcode-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.copy-shortcode-btn:hover {
+    transform: translateY(-1px);
+}
+
+.copy-shortcode-btn:active {
+    transform: translateY(0);
+}
+
+.copy-shortcode-link {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--color-primary);
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+    font-size: inherit;
+    font-family: inherit;
+}
+
+.copy-shortcode-link:hover {
+    color: #0077ed;
+    text-decoration: underline;
+}
+
 /* Content Grid */
 .form-builder-content {
     display: grid;

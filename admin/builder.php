@@ -66,6 +66,11 @@ $field_types = $builder->get_field_types();
                 <input type="text" id="form-name" class="form-builder-form-name" placeholder="<?php _e('Form Name', 'form-builder-microsaas'); ?>" value="<?php echo $form ? esc_attr($form['form_name']) : ''; ?>">
                 <input type="text" id="form-slug" class="form-builder-form-slug" placeholder="<?php _e('Form Slug', 'form-builder-microsaas'); ?>" value="<?php echo $form ? esc_attr($form['form_slug']) : ''; ?>">
                 <div class="form-builder-actions">
+                    <?php if ($form && $form_id): ?>
+                        <button type="button" id="copy-shortcode" class="button button-secondary copy-shortcode-btn" data-form-id="<?php echo esc_attr($form_id); ?>">
+                            <?php _e('Copy Shortcode', 'form-builder-microsaas'); ?>
+                        </button>
+                    <?php endif; ?>
                     <button type="button" id="save-form" class="button button-primary"><?php _e('Save Form', 'form-builder-microsaas'); ?></button>
                     <a href="<?php echo admin_url('admin.php?page=form-builder'); ?>" class="button"><?php _e('Cancel', 'form-builder-microsaas'); ?></a>
                 </div>
