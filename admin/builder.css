@@ -721,3 +721,120 @@
         width: auto;
     }
 }
+
+/* Form Builder Tabs */
+.form-builder-tabs {
+    margin-bottom: var(--spacing-md);
+}
+
+.form-builder-tabs .tab-nav {
+    display: flex;
+    background: var(--color-secondary);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    border: 1px solid var(--color-border);
+    border-bottom: none;
+    overflow: hidden;
+}
+
+.form-builder-tabs .tab-link {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md);
+    text-decoration: none;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    font-size: 13px;
+    border-right: 1px solid var(--color-border);
+    background: var(--color-secondary);
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.form-builder-tabs .tab-link:last-child {
+    border-right: none;
+}
+
+.form-builder-tabs .tab-link:hover {
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+.form-builder-tabs .tab-link.active {
+    background: var(--color-bg);
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.form-builder-tabs .tab-content {
+    display: none;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    padding: var(--spacing-lg);
+    border-top: none;
+}
+
+.form-builder-tabs .tab-content.active {
+    display: block;
+}
+
+/* Email Notification Specific Styles */
+.notification-config {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--color-secondary);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+}
+
+.notification-config label {
+    display: block;
+    margin-bottom: var(--spacing-md);
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.notification-config input[type="text"],
+.notification-config input[type="email"],
+.notification-config select,
+.notification-config textarea {
+    margin-top: var(--spacing-xs);
+    width: 100%;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    padding: var(--spacing-sm);
+    font-size: 14px;
+    background: var(--color-bg);
+    transition: border-color 0.2s ease;
+}
+
+.notification-config input[type="text"]:focus,
+.notification-config input[type="email"]:focus,
+.notification-config select:focus,
+.notification-config textarea:focus {
+    border-color: var(--color-primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
+}
+
+.notification-config textarea {
+    resize: vertical;
+    min-height: 80px;
+    font-family: monospace;
+}
+
+.notification-config input[type="checkbox"] {
+    margin-right: var(--spacing-xs);
+}
+
+/* Property group spacing in tabs */
+.tab-content .property-group {
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.tab-content .property-group:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}

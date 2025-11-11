@@ -8,8 +8,10 @@ A standalone HTML-CSS-JS form builder microsaas that creates paginated forms wit
 - **All Input Types**: Supports text, email, tel, number, textarea, select, radio, checkbox, file, date
 - **Paginated Forms**: Multi-page forms with Next/Back navigation
 - **Per-Page Webhooks**: Configure webhook URL for each page
+- **Email Notifications**: Automatic notifications for step completion and final submission
 - **Form Persistence**: Auto-saves form data to localStorage
 - **Shortcode Embedding**: Easy form embedding via `[form_builder id="form-slug"]`
+- **WordPress Mail Integration**: Uses WordPress native mail system (no SendGrid dependency)
 - **WordPress Database**: All form definitions and submissions stored in WordPress database
 
 ## Installation
@@ -28,7 +30,8 @@ A standalone HTML-CSS-JS form builder microsaas that creates paginated forms wit
 4. Configure each field: label, name, placeholder, required status
 5. Add more pages using the "Add Page" button
 6. Configure webhook URL for each page (optional)
-7. Click "Save Form"
+7. Configure email notifications in the "Email Notifications" tab
+8. Click "Save Form"
 
 ### Embedding a Form
 
@@ -56,6 +59,30 @@ Each page can have its own webhook URL configured. When a user clicks "Next" on 
   }
 }
 ```
+
+### Email Notifications
+
+Configure automatic email notifications for form interactions:
+
+1. **Step Completion**: Sent when users complete any form page
+2. **Final Submission**: Sent when the entire form is submitted
+
+#### Configuration Options
+
+- **Recipients**: Static email addresses or dynamic from form fields
+- **Custom Messages**: Personalize subject and content with placeholders
+- **WordPress Integration**: Uses `wp_mail()` - compatible with all mail plugins
+
+#### Available Placeholders
+
+- `{{form_name}}` - Form name
+- `{{page_number}}` - Current page (step notifications only)
+- `{{submission_uuid}}` - Unique submission ID
+- `{{date}}` - Current date/time
+- `{{site_name}}` - WordPress site name
+- `{{field_name}}` - Any form field value
+
+See `EMAIL_NOTIFICATIONS.md` for detailed configuration guide.
 
 ## Database Tables
 

@@ -33,6 +33,24 @@ class Form_Builder_Builder {
                     ),
                     'customJS' => ''
                 )
+            ),
+            'notifications' => array(
+                'step_notifications' => array(
+                    'enabled' => false,
+                    'recipients' => '',
+                    'recipient_field' => '',
+                    'include_admin' => true,
+                    'subject' => 'Form Step Completed - {{form_name}}',
+                    'message' => 'Hello,\n\nA step has been completed in the form "{{form_name}}".\n\nStep {{page_number}} was completed on {{date}}.\n\nSubmission ID: {{submission_uuid}}\n\nBest regards,\n{{site_name}}'
+                ),
+                'submission_notifications' => array(
+                    'enabled' => false,
+                    'recipients' => '',
+                    'recipient_field' => '',
+                    'include_admin' => true,
+                    'subject' => 'New Form Submission - {{form_name}}',
+                    'message' => 'Hello,\n\nA new form submission has been received for "{{form_name}}".\n\nSubmitted on: {{date}}\nSubmission ID: {{submission_uuid}}\n\nPlease review the form data below.\n\nBest regards,\n{{site_name}}'
+                )
             )
         );
     }
