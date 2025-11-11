@@ -399,6 +399,7 @@
         $testEmail.append('<h4>Test Email Configuration</h4>');
         $testEmail.append('<label>Send test email to:<br><input type="email" id="test-email-address" class="regular-text" placeholder="your@email.com"></label>');
         $testEmail.append('<button type="button" id="send-test-email" class="button">Send Test Email</button>');
+        $testEmail.append('<button type="button" id="debug-form-config" class="button" style="margin-left: 10px;">Debug Form Config</button>');
         $testEmail.append('<div id="test-email-result" style="margin-top: 10px;"></div>');
         $emailTab.append($testEmail);
 
@@ -522,6 +523,50 @@
                 },
                 complete: function() {
                     $button.prop('disabled', false).text('Send Test Email');
+                }
+            });
+        });
+
+        // Debug form config functionality
+        $('#debug-form-config').off('click').on('click', function() {
+            const $result = $('#test-email-result');
+            const $button = $(this);
+            
+            // Get form ID from URL or form data
+            const urlParams = new URLSearchParams(window.location.search);
+            const formId = urlParams.get('form_id');
+            
+            if (!formId) {
+                $result.html('<span style="color: #d63638;">No form ID found</span>');
+                return;
+            }
+            
+            $button.prop('disabled', true).text('Debugging...');
+            $result.html('<span style="color: #646970;">Checking form configuration...</span>');
+            
+            $.ajax({
+                url: formBuilderAdmin.apiUrl + 'debug-form/' + formId,
+                method: 'GET',
+                headers: {
+                    'X-WP-Nonce': formBuilderAdmin.nonce
+                },
+                success: function(response) {
+                    console.log('Debug form config:', response);
+                    let html = '<strong>Form Debug Info:</strong><br>';
+                    html += 'Form ID: ' + response.form_id + '<br>';
+                    html += 'Form Name: ' + response.form_name + '<br>';
+                    html += 'Notifications Config: ' + (response.notifications !== 'Not set' ? 'Found' : 'Missing') + '<br>';
+                    if (response.notifications !== 'Not set' && response.notifications.step_notifications) {
+                        html += 'Step Notifications Enabled: ' + (response.notifications.step_notifications.enabled ? 'Yes' : 'No') + '<br>';
+                    }
+                    $result.html('<div style="font-size: 12px; background: #f0f0f1; padding: 10px; border-radius: 4px;">' + html + '</div>');
+                },
+                error: function(xhr, status, error) {
+                    console.error('Debug failed:', xhr.responseText);
+                    $result.html('<span style="color: #d63638;">Debug failed: ' + error + '</span>');
+                },
+                complete: function() {
+                    $button.prop('disabled', false).text('Debug Form Config');
                 }
             });
         });

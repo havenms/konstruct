@@ -20,14 +20,32 @@ class Form_Builder_Email_Handler {
      * Send step completion email notification
      */
     public function send_step_notification($form_id, $page_number, $form_data, $submission_uuid) {
+        // Debug logging
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('Form Builder Email: send_step_notification called for form ' . $form_id);
+        }
+        
         $form = $this->storage->get_form_by_id($form_id);
         if (!$form) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('Form Builder Email: Form not found: ' . $form_id);
+            }
             return false;
         }
         
         // Get notification settings from form config
         $form_config = json_decode($form['form_config'], true);
-        if (!$form_config || empty($form_config['notifications'])) {
+        if (!$form_config) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('Form Builder Email: Invalid form config JSON for form ' . $form_id);
+            }
+            return false;
+        }
+        
+        if (empty($form_config['notifications'])) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('Form Builder Email: No notifications config found in form ' . $form_id);
+            }
             return false;
         }
         
@@ -35,7 +53,14 @@ class Form_Builder_Email_Handler {
         
         // Check if step notifications are enabled
         if (empty($notifications['step_notifications']) || !$notifications['step_notifications']['enabled']) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('Form Builder Email: Step notifications not enabled for form ' . $form_id);
+            }
             return false;
+        }
+        
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('Form Builder Email: Step notifications enabled, proceeding with email send');
         }
         
         $step_config = $notifications['step_notifications'];

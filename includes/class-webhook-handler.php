@@ -128,9 +128,16 @@ class Form_Builder_Webhook_Handler {
             isset($response['error']) ? $response['error'] : null
         );
         
-        // Send email notification for step completion (if webhook was successful)
-        if (!isset($response['error'])) {
-            $this->email_handler->send_step_notification($form_id, $page_number, $form_data, $submission_uuid);
+        // Send email notification for step completion (always send, regardless of webhook status)
+        // Add debug logging
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('Form Builder: Attempting to send step notification for form ' . $form_id . ', page ' . $page_number);
+        }
+        
+        $email_result = $this->email_handler->send_step_notification($form_id, $page_number, $form_data, $submission_uuid);
+        
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('Form Builder: Email notification result: ' . ($email_result ? 'success' : 'failed'));
         }
         
         // Return response

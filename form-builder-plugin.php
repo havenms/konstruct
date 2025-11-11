@@ -287,6 +287,12 @@ class Form_Builder_Microsaas {
             'permission_callback' => array($this, 'check_admin_permission'),
         ));
 
+        register_rest_route('form-builder/v1', '/debug-form/(?P<id>\d+)', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'debug_form'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
+
         // Protected file download route (admins only)
         register_rest_route('form-builder/v1', '/file', array(
             'methods' => 'GET',
@@ -729,6 +735,28 @@ class Form_Builder_Microsaas {
             echo ' | Email Handler: ' . ($email_handler_exists ? '✓ Loaded' : '✗ Not Found');
             echo '</p></div>';
         }
+    }
+
+    /**
+     * Debug form configuration
+     */
+    public function debug_form($request) {
+        $id = $request->get_param('id');
+        $storage = new Form_Builder_Storage();
+        $form = $storage->get_form_by_id($id);
+        
+        if (!$form) {
+            return new WP_Error('form_not_found', 'Form not found', array('status' => 404));
+        }
+        
+        $form_config = json_decode($form['form_config'], true);
+        
+        return new WP_REST_Response(array(
+            'form_id' => $id,
+            'form_name' => $form['form_name'],
+            'notifications' => isset($form_config['notifications']) ? $form_config['notifications'] : 'Not set',
+            'raw_config' => $form_config
+        ), 200);
     }
 
     /**
