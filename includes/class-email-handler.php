@@ -45,11 +45,14 @@ class Form_Builder_Email_Handler {
             return false;
         }
         
+        // Get fields from the current page/step
+        $current_page_fields = $this->get_current_page_fields($form_config, $page_number, $form_data);
+        
         // Prepare email content
         $subject = $this->replace_placeholders(
             $step_config['subject'] ?? 'Form Step Completed - {{form_name}}',
             $form,
-            $form_data,
+            $current_page_fields,
             $page_number,
             $submission_uuid
         );
@@ -57,7 +60,7 @@ class Form_Builder_Email_Handler {
         $message = $this->replace_placeholders(
             $step_config['message'] ?? $this->get_default_step_message(),
             $form,
-            $form_data,
+            $current_page_fields,
             $page_number,
             $submission_uuid
         );
@@ -65,7 +68,7 @@ class Form_Builder_Email_Handler {
         // Send emails
         $success = true;
         foreach ($recipients as $recipient) {
-            if (!$this->send_email($recipient, $subject, $message, $form_data)) {
+            if (!$this->send_email($recipient, $subject, $message, $current_page_fields)) {
                 $success = false;
             }
         }
@@ -130,6 +133,46 @@ class Form_Builder_Email_Handler {
         return $success;
     }
     
+    /**
+     * Get form fields from the current page/step only
+     */
+    private function get_current_page_fields($form_config, $page_number, $all_form_data) {
+        if (!isset($form_config['pages']) || !is_array($form_config['pages'])) {
+            return $all_form_data;
+        }
+        
+        // Get the current page (page numbers are 1-based, array is 0-based)
+        $page_index = $page_number - 1;
+        if (!isset($form_config['pages'][$page_index])) {
+            return $all_form_data;
+        }
+        
+        $current_page = $form_config['pages'][$page_index];
+        if (!isset($current_page['fields']) || !is_array($current_page['fields'])) {
+            return $all_form_data;
+        }
+        
+        // Extract field names from the current page
+        $current_page_field_names = array();
+        foreach ($current_page['fields'] as $field) {
+            if (isset($field['name']) && !empty($field['name'])) {
+                $current_page_field_names[] = $field['name'];
+            }
+        }
+        
+        // Filter form data to only include fields from current page
+        $current_page_data = array();
+        if (is_array($all_form_data)) {
+            foreach ($all_form_data as $field_name => $field_value) {
+                if (in_array($field_name, $current_page_field_names)) {
+                    $current_page_data[$field_name] = $field_value;
+                }
+            }
+        }
+        
+        return $current_page_data;
+    }
+
     /**
      * Get email recipients from configuration
      */
@@ -299,14 +342,14 @@ class Form_Builder_Email_Handler {
      * Get default step completion message template
      */
     private function get_default_step_message() {
-        return "Hello,\n\nA step has been completed in the form \"{{form_name}}\".\n\nStep {{page_number}} was completed on {{date}}.\n\nSubmission ID: {{submission_uuid}}\n\nBest regards,\n{{site_name}}";
+        return "Hello,\n\nStep {{page_number}} of the form \"{{form_name}}\" has been completed.\n\nCompleted on: {{date}}\nSubmission ID: {{submission_uuid}}\n\nThe data submitted in this step is included below.\n\nBest regards,\n{{site_name}}";
     }
     
     /**
      * Get default submission message template
      */
     private function get_default_submission_message() {
-        return "Hello,\n\nA new form submission has been received for \"{{form_name}}\".\n\nSubmitted on: {{date}}\nSubmission ID: {{submission_uuid}}\n\nPlease review the form data below.\n\nBest regards,\n{{site_name}}";
+        return "Hello,\n\nA new form submission has been received for \"{{form_name}}\".\n\nSubmitted on: {{date}}\nSubmission ID: {{submission_uuid}}\n\nThe complete form data is included below.\n\nBest regards,\n{{site_name}}";
     }
     
     /**

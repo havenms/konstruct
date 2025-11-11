@@ -50,7 +50,7 @@
                     recipient_field: '',
                     include_admin: true,
                     subject: 'Form Step Completed - {{form_name}}',
-                    message: 'Hello,\\n\\nA step has been completed in the form "{{form_name}}".\\n\\nStep {{page_number}} was completed on {{date}}.\\n\\nSubmission ID: {{submission_uuid}}\\n\\nBest regards,\\n{{site_name}}'
+                    message: 'Hello,\\n\\nStep {{page_number}} of the form "{{form_name}}" has been completed.\\n\\nCompleted on: {{date}}\\nSubmission ID: {{submission_uuid}}\\n\\nThe data submitted in this step is included below.\\n\\nBest regards,\\n{{site_name}}'
                 },
                 submission_notifications: {
                     enabled: false,
@@ -58,7 +58,7 @@
                     recipient_field: '',
                     include_admin: true,
                     subject: 'New Form Submission - {{form_name}}',
-                    message: 'Hello,\\n\\nA new form submission has been received for "{{form_name}}".\\n\\nSubmitted on: {{date}}\\nSubmission ID: {{submission_uuid}}\\n\\nPlease review the form data below.\\n\\nBest regards,\\n{{site_name}}'
+                    message: 'Hello,\\n\\nA new form submission has been received for "{{form_name}}".\\n\\nSubmitted on: {{date}}\\nSubmission ID: {{submission_uuid}}\\n\\nThe complete form data is included below.\\n\\nBest regards,\\n{{site_name}}'
                 }
             };
         }
@@ -389,8 +389,9 @@
 
         // Email placeholders help
         const $placeholders = $('<div class="property-group">');
-        $placeholders.append('<h4>Available Placeholders</h4>');
-        $placeholders.append('<p><small>{{form_name}}, {{page_number}}, {{submission_uuid}}, {{date}}, {{site_name}}, {{site_url}}, {{admin_email}}, {{field_name}} (for any form field)</small></p>');
+        $placeholders.append('<h4>Available Placeholders & Form Data</h4>');
+        $placeholders.append('<p><small><strong>Placeholders:</strong> {{form_name}}, {{page_number}}, {{submission_uuid}}, {{date}}, {{site_name}}, {{site_url}}, {{admin_email}}, {{field_name}} (for any form field)</small></p>');
+        $placeholders.append('<p><small><strong>Form Data:</strong> Step emails include data from the current step only. Final submission emails include all form data. Form data is automatically included in a table below your message.</small></p>');
         $emailTab.append($placeholders);
 
         // Test email functionality
