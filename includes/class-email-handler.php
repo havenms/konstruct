@@ -13,6 +13,10 @@ class Form_Builder_Email_Handler {
     private $storage;
     
     public function __construct() {
+        // Ensure storage class is loaded
+        if (!class_exists('Form_Builder_Storage')) {
+            require_once FORM_BUILDER_PLUGIN_DIR . 'includes/class-form-storage.php';
+        }
         $this->storage = new Form_Builder_Storage();
     }
     

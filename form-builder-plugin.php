@@ -3,7 +3,7 @@
  * Plugin Name: Form Builder Microsaas
  * Plugin URI: https://example.com/form-builder
  * Description: A standalone form builder tool that creates paginated forms with configurable per-page webhooks. All data stored in WordPress database.
- * Version: 1.0.0
+ * Version: 1.2.0
  * Author: Your Name
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
