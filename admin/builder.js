@@ -180,9 +180,21 @@
      * Render field
      */
     function renderField(field, index) {
+        const page = formData.pages[currentPageIndex];
+        const totalFields = page.fields.length;
+        const isFirst = index === 0;
+        const isLast = index === totalFields - 1;
+
         const $field = $('<div class="field-item" data-index="' + index + '">');
 
         const $header = $('<div class="field-header">');
+        
+        // Move buttons container
+        const $moveButtons = $('<div class="field-move-buttons">');
+        $moveButtons.append('<button type="button" class="button-icon move-up-btn" title="Move Up" ' + (isFirst ? 'disabled' : '') + '><svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 4L3 8H11L7 4Z" fill="currentColor"/></svg></button>');
+        $moveButtons.append('<button type="button" class="button-icon move-down-btn" title="Move Down" ' + (isLast ? 'disabled' : '') + '><svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 10L11 6H3L7 10Z" fill="currentColor"/></svg></button>');
+        
+        $header.append($moveButtons);
         $header.append('<span class="field-label">' + escapeHtml(field.label || 'Unnamed Field') + '</span>');
         $header.append('<span class="field-type">' + field.type + '</span>');
         $header.append('<button type="button" class="button-small edit-field">Edit</button>');
@@ -201,7 +213,53 @@
             renderCurrentPage();
         });
 
+        // Move up handler
+        $field.find('.move-up-btn').on('click', function () {
+            if (index > 0) {
+                moveField(index, index - 1);
+            }
+        });
+
+        // Move down handler
+        $field.find('.move-down-btn').on('click', function () {
+            if (index < totalFields - 1) {
+                moveField(index, index + 1);
+            }
+        });
+
         return $field;
+    }
+
+    /**
+     * Move field from one position to another
+     */
+    function moveField(fromIndex, toIndex) {
+        const page = formData.pages[currentPageIndex];
+        const fields = page.fields;
+        
+        // Remove field from original position
+        const field = fields.splice(fromIndex, 1)[0];
+        
+        // Insert at new position
+        fields.splice(toIndex, 0, field);
+        
+        // Update currentFieldIndex if it was affected
+        if (currentFieldIndex === fromIndex) {
+            currentFieldIndex = toIndex;
+        } else if (currentFieldIndex === toIndex) {
+            currentFieldIndex = fromIndex;
+        } else if (currentFieldIndex > fromIndex && currentFieldIndex <= toIndex) {
+            currentFieldIndex--;
+        } else if (currentFieldIndex < fromIndex && currentFieldIndex >= toIndex) {
+            currentFieldIndex++;
+        }
+        
+        renderCurrentPage();
+        
+        // Re-select the moved field if it was selected
+        if (currentFieldIndex !== null) {
+            renderFieldProperties();
+        }
     }
 
     /**
