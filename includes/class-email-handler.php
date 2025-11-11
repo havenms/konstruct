@@ -34,10 +34,16 @@ class Form_Builder_Email_Handler {
         }
         
         // Get notification settings from form config
-        $form_config = json_decode($form['form_config'], true);
+        // Handle both array and JSON string formats
+        if (is_array($form['form_config'])) {
+            $form_config = $form['form_config'];
+        } else {
+            $form_config = json_decode($form['form_config'], true);
+        }
+        
         if (!$form_config) {
             if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('Form Builder Email: Invalid form config JSON for form ' . $form_id);
+                error_log('Form Builder Email: Invalid form config for form ' . $form_id);
             }
             return false;
         }
@@ -111,7 +117,13 @@ class Form_Builder_Email_Handler {
         }
         
         // Get notification settings from form config
-        $form_config = json_decode($form['form_config'], true);
+        // Handle both array and JSON string formats
+        if (is_array($form['form_config'])) {
+            $form_config = $form['form_config'];
+        } else {
+            $form_config = json_decode($form['form_config'], true);
+        }
+        
         if (!$form_config || empty($form_config['notifications'])) {
             return false;
         }
