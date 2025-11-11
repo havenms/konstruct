@@ -4,6 +4,8 @@
 
 (function ($) {
     'use strict';
+    
+    console.log('Form Builder: JavaScript loaded - Version 1.1.0');
 
     let formData = {};
     let currentPageIndex = 0;
@@ -24,7 +26,9 @@
      * Initialize builder
      */
     function initBuilder() {
+        console.log('Form Builder: Initializing...');
         formData = JSON.parse($('#form-data').text());
+        console.log('Form Builder: Loaded form data:', formData);
 
         if (!formData.pages || formData.pages.length === 0) {
             formData.pages = [{
@@ -36,7 +40,9 @@
         }
 
         // Initialize notification settings if not present
+        console.log('Form Builder: Checking notifications...', formData.notifications);
         if (!formData.notifications) {
+            console.log('Form Builder: Initializing notification settings...');
             formData.notifications = {
                 step_notifications: {
                     enabled: false,
@@ -44,7 +50,7 @@
                     recipient_field: '',
                     include_admin: true,
                     subject: 'Form Step Completed - {{form_name}}',
-                    message: 'Hello,\n\nA step has been completed in the form "{{form_name}}".\n\nStep {{page_number}} was completed on {{date}}.\n\nSubmission ID: {{submission_uuid}}\n\nBest regards,\n{{site_name}}'
+                    message: 'Hello,\\n\\nA step has been completed in the form "{{form_name}}".\\n\\nStep {{page_number}} was completed on {{date}}.\\n\\nSubmission ID: {{submission_uuid}}\\n\\nBest regards,\\n{{site_name}}'
                 },
                 submission_notifications: {
                     enabled: false,
@@ -52,10 +58,20 @@
                     recipient_field: '',
                     include_admin: true,
                     subject: 'New Form Submission - {{form_name}}',
-                    message: 'Hello,\n\nA new form submission has been received for "{{form_name}}".\n\nSubmitted on: {{date}}\nSubmission ID: {{submission_uuid}}\n\nPlease review the form data below.\n\nBest regards,\n{{site_name}}'
+                    message: 'Hello,\\n\\nA new form submission has been received for "{{form_name}}".\\n\\nSubmitted on: {{date}}\\nSubmission ID: {{submission_uuid}}\\n\\nPlease review the form data below.\\n\\nBest regards,\\n{{site_name}}'
                 }
             };
         }
+        
+        // Ensure all notification properties exist (for backward compatibility)
+        if (formData.notifications.step_notifications && !formData.notifications.step_notifications.hasOwnProperty('include_admin')) {
+            formData.notifications.step_notifications.include_admin = true;
+        }
+        if (formData.notifications.submission_notifications && !formData.notifications.submission_notifications.hasOwnProperty('include_admin')) {
+            formData.notifications.submission_notifications.include_admin = true;
+        }
+        
+        console.log('Form Builder: Final notification config:', formData.notifications);
 
         // Normalize form data - ensure all fields have required properties
         formData.pages.forEach(function (page, pageIndex) {
@@ -332,28 +348,42 @@
         // Step Notifications
         const $stepNotifications = $('<div class="property-group">');
         $stepNotifications.append('<h4>Step Completion Notifications</h4>');
-        $stepNotifications.append('<label><input type="checkbox" id="step-notifications-enabled" ' + (formData.notifications.step_notifications.enabled ? 'checked' : '') + '> Enable step completion emails</label>');
+        $stepNotifications.append('<label><input type="checkbox" id="step-notifications-enabled" ' + (formData.notifications.step_notifications.enabled ? 'checked' : '') + '> <span>Enable step completion emails</span></label>');
         
         const $stepConfig = $('<div class="notification-config" style="' + (formData.notifications.step_notifications.enabled ? '' : 'display:none') + '">');
-        $stepConfig.append('<label>Recipients (comma-separated emails):<br><input type="text" id="step-recipients" class="regular-text" value="' + escapeHtml(formData.notifications.step_notifications.recipients || '') + '" placeholder="admin@example.com, user@example.com"></label>');
-        $stepConfig.append('<label>Or get recipient from field:<br><select id="step-recipient-field"><option value="">Select field...</option></select></label>');
-        $stepConfig.append('<label><input type="checkbox" id="step-include-admin" ' + (formData.notifications.step_notifications.include_admin ? 'checked' : '') + '> Include site admin email</label>');
-        $stepConfig.append('<label>Subject:<br><input type="text" id="step-subject" class="regular-text" value="' + escapeHtml(formData.notifications.step_notifications.subject || '') + '"></label>');
-        $stepConfig.append('<label>Message:<br><textarea id="step-message" class="large-text" rows="4">' + escapeHtml(formData.notifications.step_notifications.message || '') + '</textarea></label>');
+        
+        // Recipients section
+        $stepConfig.append('<label>Email Recipients:<br><input type="text" id="step-recipients" class="regular-text" value="' + escapeHtml(formData.notifications.step_notifications.recipients || '') + '" placeholder="admin@example.com, manager@example.com"><small>Enter multiple emails separated by commas</small></label>');
+        
+        $stepConfig.append('<label>Or use email from form field:<br><select id="step-recipient-field"><option value="">Select field...</option></select></label>');
+        
+        $stepConfig.append('<label><input type="checkbox" id="step-include-admin" ' + (formData.notifications.step_notifications.include_admin ? 'checked' : '') + '> <span>Also send to site administrator</span></label>');
+        
+        // Email content section  
+        $stepConfig.append('<label>Email Subject:<br><input type="text" id="step-subject" class="regular-text" value="' + escapeHtml(formData.notifications.step_notifications.subject || '') + '" placeholder="Form Step Completed"></label>');
+        
+        $stepConfig.append('<label>Email Message:<br><textarea id="step-message" class="large-text" rows="5" placeholder="Your custom message here...">' + escapeHtml(formData.notifications.step_notifications.message || '') + '</textarea><small>Use placeholders like {{form_name}}, {{page_number}}, {{date}} for dynamic content</small></label>');
         $stepNotifications.append($stepConfig);
         $emailTab.append($stepNotifications);
 
         // Submission Notifications
         const $submissionNotifications = $('<div class="property-group">');
         $submissionNotifications.append('<h4>Final Submission Notifications</h4>');
-        $submissionNotifications.append('<label><input type="checkbox" id="submission-notifications-enabled" ' + (formData.notifications.submission_notifications.enabled ? 'checked' : '') + '> Enable final submission emails</label>');
+        $submissionNotifications.append('<label><input type="checkbox" id="submission-notifications-enabled" ' + (formData.notifications.submission_notifications.enabled ? 'checked' : '') + '> <span>Enable final submission emails</span></label>');
         
         const $submissionConfig = $('<div class="notification-config" style="' + (formData.notifications.submission_notifications.enabled ? '' : 'display:none') + '">');
-        $submissionConfig.append('<label>Recipients (comma-separated emails):<br><input type="text" id="submission-recipients" class="regular-text" value="' + escapeHtml(formData.notifications.submission_notifications.recipients || '') + '" placeholder="admin@example.com, user@example.com"></label>');
-        $submissionConfig.append('<label>Or get recipient from field:<br><select id="submission-recipient-field"><option value="">Select field...</option></select></label>');
-        $submissionConfig.append('<label><input type="checkbox" id="submission-include-admin" ' + (formData.notifications.submission_notifications.include_admin ? 'checked' : '') + '> Include site admin email</label>');
-        $submissionConfig.append('<label>Subject:<br><input type="text" id="submission-subject" class="regular-text" value="' + escapeHtml(formData.notifications.submission_notifications.subject || '') + '"></label>');
-        $submissionConfig.append('<label>Message:<br><textarea id="submission-message" class="large-text" rows="4">' + escapeHtml(formData.notifications.submission_notifications.message || '') + '</textarea></label>');
+        
+        // Recipients section
+        $submissionConfig.append('<label>Email Recipients:<br><input type="text" id="submission-recipients" class="regular-text" value="' + escapeHtml(formData.notifications.submission_notifications.recipients || '') + '" placeholder="admin@example.com, manager@example.com"><small>Enter multiple emails separated by commas</small></label>');
+        
+        $submissionConfig.append('<label>Or use email from form field:<br><select id="submission-recipient-field"><option value="">Select field...</option></select></label>');
+        
+        $submissionConfig.append('<label><input type="checkbox" id="submission-include-admin" ' + (formData.notifications.submission_notifications.include_admin ? 'checked' : '') + '> <span>Also send to site administrator</span></label>');
+        
+        // Email content section
+        $submissionConfig.append('<label>Email Subject:<br><input type="text" id="submission-subject" class="regular-text" value="' + escapeHtml(formData.notifications.submission_notifications.subject || '') + '" placeholder="New Form Submission"></label>');
+        
+        $submissionConfig.append('<label>Email Message:<br><textarea id="submission-message" class="large-text" rows="5" placeholder="Your custom message here...">' + escapeHtml(formData.notifications.submission_notifications.message || '') + '</textarea><small>Use placeholders like {{form_name}}, {{submission_uuid}}, {{date}} for dynamic content</small></label>');
         $submissionNotifications.append($submissionConfig);
         $emailTab.append($submissionNotifications);
 
@@ -362,6 +392,14 @@
         $placeholders.append('<h4>Available Placeholders</h4>');
         $placeholders.append('<p><small>{{form_name}}, {{page_number}}, {{submission_uuid}}, {{date}}, {{site_name}}, {{site_url}}, {{admin_email}}, {{field_name}} (for any form field)</small></p>');
         $emailTab.append($placeholders);
+
+        // Test email functionality
+        const $testEmail = $('<div class="property-group">');
+        $testEmail.append('<h4>Test Email Configuration</h4>');
+        $testEmail.append('<label>Send test email to:<br><input type="email" id="test-email-address" class="regular-text" placeholder="your@email.com"></label>');
+        $testEmail.append('<button type="button" id="send-test-email" class="button">Send Test Email</button>');
+        $testEmail.append('<div id="test-email-result" style="margin-top: 10px;"></div>');
+        $emailTab.append($testEmail);
 
         $props.append($emailTab);
 
@@ -379,6 +417,7 @@
         // Tab switching
         $('.tab-link').off('click').on('click', function(e) {
             e.preventDefault();
+            console.log('Form Builder: Tab clicked:', $(this).attr('href'));
             const target = $(this).attr('href');
             $('.tab-link').removeClass('active');
             $('.tab-content').removeClass('active');
@@ -442,6 +481,48 @@
         // Bind custom JS events
         $('#custom-js').off('input').on('input', function () {
             page.customJS = $(this).val();
+        });
+
+        // Test email functionality
+        $('#send-test-email').off('click').on('click', function() {
+            const email = $('#test-email-address').val().trim();
+            const $result = $('#test-email-result');
+            const $button = $(this);
+            
+            if (!email) {
+                $result.html('<span style="color: #d63638;">Please enter an email address</span>');
+                return;
+            }
+            
+            $button.prop('disabled', true).text('Sending...');
+            $result.html('<span style="color: #646970;">Sending test email...</span>');
+            
+            $.ajax({
+                url: formBuilderAdmin.apiUrl + 'test-email',
+                method: 'POST',
+                headers: {
+                    'X-WP-Nonce': formBuilderAdmin.nonce
+                },
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    email: email
+                }),
+                success: function(response) {
+                    console.log('Test email success:', response);
+                    $result.html('<span style="color: #00a32a;">✓ Test email sent successfully!</span>');
+                },
+                error: function(xhr, status, error) {
+                    console.error('Test email failed:', xhr.responseText);
+                    let message = 'Failed to send test email';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        message = xhr.responseJSON.message;
+                    }
+                    $result.html('<span style="color: #d63638;">✗ ' + message + '</span>');
+                },
+                complete: function() {
+                    $button.prop('disabled', false).text('Send Test Email');
+                }
+            });
         });
     }
 

@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('FORM_BUILDER_VERSION', '1.0.0');
+define('FORM_BUILDER_VERSION', '1.1.0');
 define('FORM_BUILDER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('FORM_BUILDER_PLUGIN_URL', plugin_dir_url(__FILE__));
 
@@ -66,6 +66,11 @@ class Form_Builder_Microsaas {
         
         // Enqueue frontend scripts and styles
         add_action('wp_enqueue_scripts', array($this, 'enqueue_frontend_assets'));
+        
+        // Add admin notice for debugging
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            add_action('admin_notices', array($this, 'debug_admin_notice'));
+        }
     }
     
     /**
@@ -273,6 +278,12 @@ class Form_Builder_Microsaas {
         register_rest_route('form-builder/v1', '/submissions', array(
             'methods' => 'GET',
             'callback' => array($this, 'get_submissions'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
+
+        register_rest_route('form-builder/v1', '/test-email', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'test_email'),
             'permission_callback' => array($this, 'check_admin_permission'),
         ));
 
@@ -703,6 +714,45 @@ class Form_Builder_Microsaas {
                 'apiUrl' => rest_url('form-builder/v1/'),
                 'nonce' => wp_create_nonce('wp_rest'),
             ));
+        }
+    }
+
+    /**
+     * Debug admin notice (only shown when WP_DEBUG is true)
+     */
+    public function debug_admin_notice() {
+        $screen = get_current_screen();
+        if (strpos($screen->id, 'form-builder') !== false) {
+            $email_handler_exists = class_exists('Form_Builder_Email_Handler');
+            echo '<div class="notice notice-info"><p>';
+            echo '<strong>Form Builder Debug:</strong> Version ' . FORM_BUILDER_VERSION;
+            echo ' | Email Handler: ' . ($email_handler_exists ? '✓ Loaded' : '✗ Not Found');
+            echo '</p></div>';
+        }
+    }
+
+    /**
+     * Test email functionality
+     */
+    public function test_email($request) {
+        $params = $request->get_json_params();
+        
+        if (empty($params['email'])) {
+            return new WP_Error('missing_email', 'Email address is required', array('status' => 400));
+        }
+        
+        $email = sanitize_email($params['email']);
+        if (!is_email($email)) {
+            return new WP_Error('invalid_email', 'Invalid email address', array('status' => 400));
+        }
+        
+        $email_handler = new Form_Builder_Email_Handler();
+        $result = $email_handler->test_email_config($email);
+        
+        if ($result) {
+            return new WP_REST_Response(array('success' => true, 'message' => 'Test email sent successfully'), 200);
+        } else {
+            return new WP_Error('email_failed', 'Failed to send test email', array('status' => 500));
         }
     }
 
