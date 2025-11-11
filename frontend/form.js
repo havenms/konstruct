@@ -80,14 +80,18 @@
 
             if (target.matches('.form-builder-btn-submit') || target.closest('.form-builder-btn-submit')) {
                 e.preventDefault();
+                e.stopPropagation();
                 self.submitForm();
+                return false;
             }
         });
 
         // Form submit
         this.formElement.addEventListener('submit', function (e) {
             e.preventDefault();
+            e.stopPropagation();
             self.submitForm();
+            return false;
         });
     };
 
@@ -298,8 +302,8 @@
         this.updateButtons();
         this.updateProgress();
 
-        // Scroll to top
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Scroll to form container (not top of page) for better UX when embedded
+        this.container.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
     FormBuilderInstance.prototype.updateButtons = function () {
@@ -460,6 +464,12 @@
         }
         if (success) {
             success.style.display = 'block';
+            // Only scroll if success message is not already in viewport to prevent unwanted page scrolling
+            const rect = this.container.getBoundingClientRect();
+            const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+            if (!isVisible) {
+                this.container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
     };
 
