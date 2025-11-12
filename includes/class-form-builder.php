@@ -36,7 +36,7 @@ class Form_Builder_Builder {
             ),
             'notifications' => array(
                 'step_notifications' => array(
-                    'enabled' => false,
+                    'enabled' => true,
                     'recipients' => '',
                     'recipient_field' => '',
                     'include_admin' => true,
@@ -55,7 +55,7 @@ Best regards,
 {{site_name}}'
                 ),
                 'submission_notifications' => array(
-                    'enabled' => false,
+                    'enabled' => true,
                     'recipients' => '',
                     'recipient_field' => '',
                     'include_admin' => true,

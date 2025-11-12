@@ -76,7 +76,15 @@ class Form_Builder_Email_Handler {
         $step_config = $notifications['step_notifications'];
         $recipients = $this->get_recipients($step_config, $form_data);
         
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('Form Builder Email: Recipients found: ' . print_r($recipients, true));
+            error_log('Form Builder Email: Step config: ' . print_r($step_config, true));
+        }
+        
         if (empty($recipients)) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('Form Builder Email: No valid recipients found');
+            }
             return false;
         }
         
@@ -223,7 +231,9 @@ class Form_Builder_Email_Handler {
         // Static recipients
         if (!empty($config['recipients'])) {
             if (is_string($config['recipients'])) {
-                $recipients[] = $config['recipients'];
+                // Handle comma-separated email addresses
+                $email_list = array_map('trim', explode(',', $config['recipients']));
+                $recipients = array_merge($recipients, $email_list);
             } elseif (is_array($config['recipients'])) {
                 $recipients = array_merge($recipients, $config['recipients']);
             }
@@ -234,8 +244,8 @@ class Form_Builder_Email_Handler {
             $recipients[] = $form_data[$config['recipient_field']];
         }
         
-        // Admin email as fallback
-        if (empty($recipients) && (!isset($config['include_admin']) || $config['include_admin'])) {
+        // Include admin email if enabled
+        if (!isset($config['include_admin']) || $config['include_admin']) {
             $recipients[] = get_option('admin_email');
         }
         
