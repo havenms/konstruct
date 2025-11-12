@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('FORM_BUILDER_VERSION', '1.1.1');
+define('FORM_BUILDER_VERSION', '1.1.2');
 define('FORM_BUILDER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('FORM_BUILDER_PLUGIN_URL', plugin_dir_url(__FILE__));
 
