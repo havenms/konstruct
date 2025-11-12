@@ -293,6 +293,12 @@ class Form_Builder_Microsaas {
             'permission_callback' => array($this, 'check_admin_permission'),
         ));
 
+        register_rest_route('form-builder/v1', '/step-notification', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'send_step_notification'),
+            'permission_callback' => '__return_true',
+        ));
+
         // Protected file download route (admins only)
         register_rest_route('form-builder/v1', '/file', array(
             'methods' => 'GET',
@@ -800,8 +806,50 @@ class Form_Builder_Microsaas {
             mt_rand(0, 0xffff)
         );
     }
+
+    /**
+     * Send step notification (independent of webhooks)
+     */
+    public function send_step_notification($request) {
+        $params = $request->get_json_params();
+        
+        // Validate required parameters
+        if (empty($params['form_id']) || empty($params['page_number']) || !isset($params['form_data'])) {
+            return new WP_Error(
+                'missing_params',
+                'form_id, page_number, and form_data are required',
+                array('status' => 400)
+            );
+        }
+        
+        $form_id = intval($params['form_id']);
+        $page_number = intval($params['page_number']);
+        $form_data = $params['form_data'];
+        $submission_uuid = isset($params['submission_uuid']) ? sanitize_text_field($params['submission_uuid']) : $this->generate_uuid();
+        
+        // Validate form exists
+        $storage = new Form_Builder_Storage();
+        $form = $storage->get_form_by_id($form_id);
+        if (!$form) {
+            return new WP_Error(
+                'form_not_found',
+                'Form not found',
+                array('status' => 404)
+            );
+        }
+        
+        // Send email notification
+        $email_handler = new Form_Builder_Email_Handler();
+        $email_result = $email_handler->send_step_notification($form_id, $page_number, $form_data, $submission_uuid);
+        
+        return new WP_REST_Response(array(
+            'success' => true,
+            'email_sent' => $email_result,
+            'submission_uuid' => $submission_uuid
+        ), 200);
+    }
 }
 
-// Initialize the plugin
+// Initialize plugin
 Form_Builder_Microsaas::get_instance();
 

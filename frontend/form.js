@@ -265,6 +265,9 @@
             this.sendWebhook(currentPageConfig.webhook.url, this.currentPage);
         }
 
+        // Send step notification email (independent of webhooks)
+        this.sendStepNotification(this.currentPage);
+
         // Execute custom JS if present
         if (currentPageConfig.customJS) {
             try {
@@ -278,14 +281,14 @@
 
         if (this.currentPage < this.totalPages) {
             this.currentPage++;
-            this.showPage(this.currentPage);
+            this.showPage(this.currentPage, true); // Scroll on navigation
         }
     };
 
     FormBuilderInstance.prototype.goToPreviousPage = function () {
         if (this.currentPage > 1) {
             this.currentPage--;
-            this.showPage(this.currentPage);
+            this.showPage(this.currentPage, true); // Scroll on navigation
         }
     };
 
@@ -302,8 +305,8 @@
         this.updateButtons();
         this.updateProgress();
 
-        // Only scroll when navigating between pages (not on initial load)
-        if (shouldScroll !== false) {
+        // Only scroll when explicitly requested
+        if (shouldScroll === true) {
             this.container.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     };
@@ -455,6 +458,63 @@
             .catch(function (error) {
                 console.error('Webhook error:', error);
             });
+    };
+
+    FormBuilderInstance.prototype.sendStepNotification = function (pageNumber) {
+        // Check if step notifications are enabled in form config
+        if (!this.config.notifications || 
+            !this.config.notifications.step_notifications || 
+            !this.config.notifications.step_notifications.enabled) {
+            return; // Skip if step notifications not enabled
+        }
+
+        const self = this;
+        const currentPageFields = this.getCurrentPageData();
+
+        fetch(formBuilderFrontend.apiUrl + 'step-notification', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-WP-Nonce': formBuilderFrontend.nonce
+            },
+            body: JSON.stringify({
+                form_id: parseInt(this.formId),
+                page_number: pageNumber,
+                form_data: currentPageFields,
+                submission_uuid: this.submissionUuid
+            })
+        })
+        .then(function (response) {
+            return response.json();
+        })
+        .then(function (data) {
+            if (data.success) {
+                console.log('Step notification sent successfully');
+                if (data.submission_uuid) {
+                    self.submissionUuid = data.submission_uuid;
+                }
+            } else {
+                console.log('Step notification failed:', data);
+            }
+        })
+        .catch(function (error) {
+            console.error('Step notification error:', error);
+        });
+    };
+
+    FormBuilderInstance.prototype.getCurrentPageData = function () {
+        const currentPageFields = {};
+        const currentPageConfig = this.config.pages[this.currentPage - 1];
+        
+        if (currentPageConfig && currentPageConfig.fields) {
+            currentPageConfig.fields.forEach(function (field) {
+                if (this.formData[field.name]) {
+                    currentPageFields[field.name] = this.formData[field.name];
+                }
+            }.bind(this));
+        }
+        
+        return currentPageFields;
     };
 
     FormBuilderInstance.prototype.showSuccess = function () {
