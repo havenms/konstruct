@@ -277,7 +277,7 @@
 /* Content Grid */
 .form-builder-content {
     display: grid;
-    grid-template-columns: 260px 1fr 300px;
+    grid-template-columns: 220px 1fr 480px;
     gap: var(--spacing-lg);
     margin-top: var(--spacing-lg);
 }
@@ -666,7 +666,7 @@
 /* Responsive */
 @media (max-width: 1200px) {
     .form-builder-content {
-        grid-template-columns: 200px 1fr 280px;
+        grid-template-columns: 200px 1fr 440px;
         gap: var(--spacing-md);
     }
 
