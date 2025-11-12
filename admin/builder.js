@@ -350,22 +350,31 @@ Best regards,
         const page = formData.pages[currentPageIndex];
         if (!page) return;
 
-        // Add tabs for different settings sections
-        const $tabs = $('<div class="form-builder-tabs">');
-        $tabs.append('<div class="tab-nav"><a href="#webhook-tab" class="tab-link active">Webhook</a><a href="#email-tab" class="tab-link">Email Notifications</a><a href="#js-tab" class="tab-link">Custom JS</a></div>');
-        $props.append($tabs);
-
-        // Webhook Settings Tab
-        const $webhookTab = $('<div id="webhook-tab" class="tab-content active">');
+        // Add accordions for different settings sections
+        const $accordions = $('<div class="form-builder-accordions">');
+        
+        // Webhook Settings Accordion
+        const $webhookAccordion = $('<div class="accordion-item">');
+        const $webhookHeader = $('<button type="button" class="accordion-header" aria-expanded="true">');
+        $webhookHeader.append('<span class="accordion-title">Webhook</span>');
+        $webhookHeader.append('<svg class="accordion-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L1 4H11L6 9Z" fill="currentColor"/></svg>');
+        $webhookAccordion.append($webhookHeader);
+        const $webhookContent = $('<div class="accordion-content" style="display: block;">');
         const $webhook = $('<div class="property-group">');
         $webhook.append('<h4>Webhook Settings</h4>');
         $webhook.append('<label><input type="checkbox" id="webhook-enabled" ' + (page.webhook.enabled ? 'checked' : '') + '> Enable Webhook</label>');
         $webhook.append('<input type="url" id="webhook-url" class="regular-text" placeholder="https://example.com/webhook" value="' + escapeHtml(page.webhook.url || '') + '">');
-        $webhookTab.append($webhook);
-        $props.append($webhookTab);
+        $webhookContent.append($webhook);
+        $webhookAccordion.append($webhookContent);
+        $accordions.append($webhookAccordion);
 
-        // Email Notifications Tab
-        const $emailTab = $('<div id="email-tab" class="tab-content">');
+        // Email Notifications Accordion
+        const $emailAccordion = $('<div class="accordion-item">');
+        const $emailHeader = $('<button type="button" class="accordion-header" aria-expanded="false">');
+        $emailHeader.append('<span class="accordion-title">Email Notifications</span>');
+        $emailHeader.append('<svg class="accordion-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L1 4H11L6 9Z" fill="currentColor"/></svg>');
+        $emailAccordion.append($emailHeader);
+        const $emailContent = $('<div class="accordion-content" style="display: none;">');
         
         // Step Notifications
         const $stepNotifications = $('<div class="property-group">');
@@ -386,7 +395,7 @@ Best regards,
         
         $stepConfig.append('<label>Email Message:<br><textarea id="step-message" class="large-text" rows="5" placeholder="Your custom message here...">' + escapeHtml(formData.notifications.step_notifications.message || '') + '</textarea><small>Use placeholders like {{form_name}}, {{page_number}}, {{date}} for dynamic content</small></label>');
         $stepNotifications.append($stepConfig);
-        $emailTab.append($stepNotifications);
+        $emailContent.append($stepNotifications);
 
         // Submission Notifications
         const $submissionNotifications = $('<div class="property-group">');
@@ -407,7 +416,7 @@ Best regards,
         
         $submissionConfig.append('<label>Email Message:<br><textarea id="submission-message" class="large-text" rows="5" placeholder="Your custom message here...">' + escapeHtml(formData.notifications.submission_notifications.message || '') + '</textarea><small>Use placeholders like {{form_name}}, {{submission_uuid}}, {{date}} for dynamic content</small></label>');
         $submissionNotifications.append($submissionConfig);
-        $emailTab.append($submissionNotifications);
+        $emailContent.append($submissionNotifications);
 
         // Email placeholders help
         const $placeholders = $('<div class="property-group">');
@@ -424,7 +433,7 @@ Best regards,
             $placeholders.append(fieldPlaceholders);
         }
         
-        $emailTab.append($placeholders);
+        $emailContent.append($placeholders);
 
         // Test email functionality
         const $testEmail = $('<div class="property-group">');
@@ -433,30 +442,48 @@ Best regards,
         $testEmail.append('<button type="button" id="send-test-email" class="button">Send Test Email</button>');
         $testEmail.append('<button type="button" id="debug-form-config" class="button" style="margin-left: 10px;">Debug Form Config</button>');
         $testEmail.append('<div id="test-email-result" style="margin-top: 10px;"></div>');
-        $emailTab.append($testEmail);
+        $emailContent.append($testEmail);
+        $emailAccordion.append($emailContent);
+        $accordions.append($emailAccordion);
 
-        $props.append($emailTab);
-
-        // Custom JavaScript Tab
-        const $jsTab = $('<div id="js-tab" class="tab-content">');
+        // Custom JavaScript Accordion
+        const $jsAccordion = $('<div class="accordion-item">');
+        const $jsHeader = $('<button type="button" class="accordion-header" aria-expanded="false">');
+        $jsHeader.append('<span class="accordion-title">Custom JS</span>');
+        $jsHeader.append('<svg class="accordion-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L1 4H11L6 9Z" fill="currentColor"/></svg>');
+        $jsAccordion.append($jsHeader);
+        const $jsContent = $('<div class="accordion-content" style="display: none;">');
         const $customJS = $('<div class="property-group">');
         $customJS.append('<h4>Custom JavaScript (Optional)</h4>');
         $customJS.append('<textarea id="custom-js" class="large-text code" rows="5" placeholder="// Custom JS code here">' + escapeHtml(page.customJS || '') + '</textarea>');
-        $jsTab.append($customJS);
-        $props.append($jsTab);
+        $jsContent.append($customJS);
+        $jsAccordion.append($jsContent);
+        $accordions.append($jsAccordion);
+        
+        $props.append($accordions);
 
         // Populate recipient field dropdowns with email fields from all pages
         populateRecipientFields();
 
-        // Tab switching
-        $('.tab-link').off('click').on('click', function(e) {
+        // Accordion toggle functionality
+        $('.accordion-header').off('click').on('click', function(e) {
             e.preventDefault();
-            console.log('Form Builder: Tab clicked:', $(this).attr('href'));
-            const target = $(this).attr('href');
-            $('.tab-link').removeClass('active');
-            $('.tab-content').removeClass('active');
-            $(this).addClass('active');
-            $(target).addClass('active');
+            const $header = $(this);
+            const $item = $header.closest('.accordion-item');
+            const $content = $item.find('.accordion-content');
+            const $icon = $header.find('.accordion-icon');
+            const isExpanded = $header.attr('aria-expanded') === 'true';
+            
+            // Toggle current accordion
+            if (isExpanded) {
+                $content.slideUp(200);
+                $header.attr('aria-expanded', 'false');
+                $icon.css('transform', 'rotate(0deg)');
+            } else {
+                $content.slideDown(200);
+                $header.attr('aria-expanded', 'true');
+                $icon.css('transform', 'rotate(180deg)');
+            }
         });
 
         // Bind webhook events

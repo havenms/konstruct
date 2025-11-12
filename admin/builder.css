@@ -722,57 +722,94 @@
     }
 }
 
-/* Email Notification Tabs */
-.form-builder-tabs {
-    margin-bottom: var(--spacing-lg);
-}
-
-.tab-nav {
+/* Accordion System - Apple Design */
+.form-builder-accordions {
     display: flex;
-    border-bottom: 1px solid var(--color-border);
-    margin-bottom: var(--spacing-lg);
-    gap: 2px;
-    background: var(--color-secondary);
-    padding: 4px;
-    border-radius: var(--radius-md);
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-bottom: 0;
 }
 
-.tab-link {
-    padding: var(--spacing-md) var(--spacing-lg);
-    background: transparent;
-    border: none;
-    color: var(--color-text-secondary);
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border-radius: var(--radius-sm);
-    flex: 1;
-    text-align: center;
-}
-
-.tab-link:hover {
-    background: rgba(255, 255, 255, 0.7);
-    color: var(--color-text);
-}
-
-.tab-link.active {
+.accordion-item {
     background: var(--color-bg);
-    color: var(--color-primary);
-    box-shadow: var(--shadow-sm);
-}
-
-.tab-content {
-    display: none;
-    padding: var(--spacing-lg);
-    background: var(--color-bg);
-    border-radius: var(--radius-md);
     border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.tab-content.active {
-    display: block;
+.accordion-item:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.accordion-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--color-bg);
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text);
+    gap: var(--spacing-md);
+}
+
+.accordion-header:hover {
+    background: var(--color-secondary);
+}
+
+.accordion-header:focus {
+    outline: none;
+    background: var(--color-secondary);
+}
+
+.accordion-header:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+}
+
+.accordion-title {
+    flex: 1;
+    font-weight: 600;
+    color: var(--color-text);
+    letter-spacing: -0.01em;
+}
+
+.accordion-icon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--color-text-secondary);
+    transform: rotate(180deg);
+}
+
+.accordion-header[aria-expanded="false"] .accordion-icon,
+.accordion-item .accordion-header[aria-expanded="false"] .accordion-icon {
+    transform: rotate(0deg);
+}
+
+.accordion-content {
+    padding: 0;
+    background: var(--color-bg);
+    overflow: hidden;
+}
+
+.accordion-content>.property-group {
+    padding: var(--spacing-lg);
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
+.accordion-content>.property-group:last-child {
+    padding-bottom: var(--spacing-lg);
 }
 
 .notification-config {
@@ -840,8 +877,8 @@
 }
 
 /* Checkbox labels */
-.notification-config label input[type="checkbox"] + span,
-.property-group label input[type="checkbox"] + span {
+.notification-config label input[type="checkbox"]+span,
+.property-group label input[type="checkbox"]+span {
     margin-left: var(--spacing-xs);
 }
 
@@ -863,61 +900,6 @@
 #test-email-result {
     font-size: 13px;
     font-weight: 500;
-}
-
-/* Form Builder Tabs */
-.form-builder-tabs {
-    margin-bottom: var(--spacing-md);
-}
-
-.form-builder-tabs .tab-nav {
-    display: flex;
-    background: var(--color-secondary);
-    border-radius: var(--radius-md) var(--radius-md) 0 0;
-    border: 1px solid var(--color-border);
-    border-bottom: none;
-    overflow: hidden;
-}
-
-.form-builder-tabs .tab-link {
-    flex: 1;
-    padding: var(--spacing-sm) var(--spacing-md);
-    text-decoration: none;
-    color: var(--color-text-secondary);
-    font-weight: 500;
-    font-size: 13px;
-    border-right: 1px solid var(--color-border);
-    background: var(--color-secondary);
-    transition: all 0.2s ease;
-    text-align: center;
-}
-
-.form-builder-tabs .tab-link:last-child {
-    border-right: none;
-}
-
-.form-builder-tabs .tab-link:hover {
-    background: var(--color-bg);
-    color: var(--color-text);
-}
-
-.form-builder-tabs .tab-link.active {
-    background: var(--color-bg);
-    color: var(--color-primary);
-    font-weight: 600;
-}
-
-.form-builder-tabs .tab-content {
-    display: none;
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: 0 0 var(--radius-md) var(--radius-md);
-    padding: var(--spacing-lg);
-    border-top: none;
-}
-
-.form-builder-tabs .tab-content.active {
-    display: block;
 }
 
 /* Email Notification Specific Styles */
@@ -967,17 +949,4 @@
 
 .notification-config input[type="checkbox"] {
     margin-right: var(--spacing-xs);
-}
-
-/* Property group spacing in tabs */
-.tab-content .property-group {
-    margin-bottom: var(--spacing-lg);
-    padding-bottom: var(--spacing-lg);
-    border-bottom: 1px solid var(--color-border);
-}
-
-.tab-content .property-group:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
 }
