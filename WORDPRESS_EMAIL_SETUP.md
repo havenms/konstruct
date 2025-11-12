@@ -1,6 +1,6 @@
 # WordPress Email Setup Guide
 
-## Quick Setup for Form Builder Email Notifications
+## Quick Setup for Konstruct Form Builder Email Notifications
 
 ### 1. WordPress Mail Configuration
 
@@ -25,7 +25,7 @@ define('SMTP_AUTH',    true);
 define('SMTP_DEBUG',   false);
 ```
 
-### 2. Form Builder Email Settings
+### 2. Konstruct Form Builder Email Settings
 
 #### Default Email Templates
 The plugin now includes improved email templates with:
@@ -77,9 +77,9 @@ Best regards,
 - `{{dynamic_fields}}` - Automatically includes all form fields from the current step
 - `{{field_name}}` - Individual field placeholders (e.g., `{{first_name}}`, `{{email}}`, `{{phone}}`)
 
-### 3. Email Configuration in Form Builder
+### 3. Email Configuration in Konstruct Form Builder
 
-1. **Access Form Builder:** Go to WordPress Admin → Forms → Edit your form
+1. **Access Konstruct Form Builder:** Go to WordPress Admin → Konstruct Form Builder → Edit your form
 2. **Navigate to Email Tab:** Click on "Email Notifications" tab in the page settings
 3. **Configure Step Notifications:**
    - ✅ Enable step notifications
@@ -135,7 +135,7 @@ Go to **Settings → General** and ensure:
 ### 7. Advanced Configuration
 
 #### Custom Email Templates
-Edit the templates in the form builder admin interface. The system supports:
+Edit the templates in the Konstruct Form Builder admin interface. The system supports:
 - HTML formatting (automatically applied)
 - Line breaks (use actual line breaks, not `\n`)
 - Dynamic field replacement

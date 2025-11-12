@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Form Builder Microsaas
+ * Plugin Name: Konstruct Form Builder
  * Plugin URI: https://example.com/form-builder
  * Description: A standalone form builder tool that creates paginated forms with configurable per-page webhooks. All data stored in WordPress database.
  * Version: 1.2.0
@@ -184,8 +184,8 @@ class Form_Builder_Microsaas {
      */
     public function add_admin_menu() {
         add_menu_page(
-            __('Form Builder', 'form-builder-microsaas'),
-            __('Form Builder', 'form-builder-microsaas'),
+            __('Konstruct Form Builder', 'form-builder-microsaas'),
+            __('Konstruct Form Builder', 'form-builder-microsaas'),
             'manage_options',
             'form-builder',
             array($this, 'render_builder_page'),
@@ -737,7 +737,7 @@ class Form_Builder_Microsaas {
         if (strpos($screen->id, 'form-builder') !== false) {
             $email_handler_exists = class_exists('Form_Builder_Email_Handler');
             echo '<div class="notice notice-info"><p>';
-            echo '<strong>Form Builder Debug:</strong> Version ' . FORM_BUILDER_VERSION;
+            echo '<strong>Konstruct Form Builder Debug:</strong> Version ' . FORM_BUILDER_VERSION;
             echo ' | Email Handler: ' . ($email_handler_exists ? '✓ Loaded' : '✗ Not Found');
             echo '</p></div>';
         }

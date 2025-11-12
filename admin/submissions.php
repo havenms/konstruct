@@ -86,7 +86,7 @@ $total_pages = ceil($total_submissions / $per_page);
 ?>
 
 <div class="wrap form-builder-admin">
-    <h1><?php _e('Form Submissions', 'form-builder-microsaas'); ?></h1>
+    <h1><?php _e('Konstruct Form Builder - Submissions', 'form-builder-microsaas'); ?></h1>
 
     <!-- Filters -->
     <div class="form-builder-filters" style="background: #fff; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
@@ -160,13 +160,6 @@ $total_pages = ceil($total_submissions / $per_page);
             <h3 style="margin: 0 0 10px 0; font-size: 2em;"><?php echo number_format($today_count); ?></h3>
             <p style="margin: 0; opacity: 0.9;">Today's Submissions</p>
         </div>
-    </div>
-
-    <!-- Export Button -->
-    <div style="margin-bottom: 20px;">
-        <button type="button" id="export-csv" class="button button-secondary" style="padding: 10px 20px;">
-            📊 Export to CSV
-        </button>
     </div>
 
     <!-- Submissions Table -->
@@ -360,56 +353,5 @@ jQuery(document).ready(function($) {
         }
     });
 
-    // Export to CSV
-    $('#export-csv').on('click', function() {
-        // Get current filters
-        const params = new URLSearchParams(window.location.search);
-        params.set('action', 'export_csv');
-
-        // Redirect to export URL
-        window.location.href = '<?php echo admin_url('admin-ajax.php'); ?>?' + params.toString();
-    });
 });
 </script>
-
-<?php
-// Handle CSV export
-if (isset($_GET['action']) && $_GET['action'] === 'export_csv') {
-    // Set headers for CSV download
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename=form-submissions-' . date('Y-m-d') . '.csv');
-
-    $output = fopen('php://output', 'w');
-
-    // CSV headers
-    fputcsv($output, array('ID', 'Form Name', 'Form Slug', 'Submission UUID', 'Form Data', 'Page Number', 'Delivered', 'Created At'));
-
-    // Get filtered submissions
-    $export_submissions = $wpdb->get_results($wpdb->prepare($query, array_slice($where_values, 0, -2)), ARRAY_A);
-
-    foreach ($export_submissions as $submission) {
-        // Decode form data for CSV
-        $form_data = '';
-        if ($submission['form_data']) {
-            $data = json_decode($submission['form_data'], true);
-            if (is_array($data)) {
-                $form_data = json_encode($data, JSON_UNESCAPED_UNICODE);
-            }
-        }
-
-        fputcsv($output, array(
-            $submission['id'],
-            $submission['form_name'],
-            $submission['form_slug'],
-            $submission['submission_uuid'],
-            $form_data,
-            $submission['page_number'],
-            $submission['delivered'] ? 'Yes' : 'No',
-            $submission['created_at']
-        ));
-    }
-
-    fclose($output);
-    exit;
-}
-?>

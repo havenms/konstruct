@@ -419,8 +419,8 @@ class Form_Builder_Email_Handler {
      * Test email configuration
      */
     public function test_email_config($to_email) {
-        $subject = 'Form Builder Email Test - ' . get_bloginfo('name');
-        $message = "This is a test email from the Form Builder plugin.\n\nIf you received this email, your email configuration is working correctly.\n\nSent on: " . current_time('Y-m-d H:i:s');
+        $subject = 'Konstruct Form Builder Email Test - ' . get_bloginfo('name');
+        $message = "This is a test email from the Konstruct Form Builder plugin.\n\nIf you received this email, your email configuration is working correctly.\n\nSent on: " . current_time('Y-m-d H:i:s');
         
         return $this->send_email($to_email, $subject, $message);
     }

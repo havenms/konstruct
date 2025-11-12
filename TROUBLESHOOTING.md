@@ -9,13 +9,13 @@ If you're not seeing the email notification changes in your WordPress admin, her
 
 ## 2. Check Plugin Status
 1. Go to **Plugins** in WordPress admin
-2. Make sure "Form Builder Microsaas" is activated
+2. Make sure "Konstruct Form Builder" is activated
 3. If it's activated, try deactivating and reactivating it
 
 ## 3. Check for JavaScript Errors
 1. Open browser Developer Tools (F12)
 2. Go to the **Console** tab
-3. Navigate to **Form Builder** → **Add New** 
+3. Navigate to **Konstruct Form Builder** → **Add New** 
 4. Look for any JavaScript errors (red text)
 5. You should see: `Form Builder: JavaScript loaded - Version 1.1.0`
 
@@ -51,10 +51,10 @@ Then check `/wp-content/debug.log` for any PHP errors.
 ## 6. Manual Verification Steps
 
 ### Step 1: Check Plugin Version
-In WordPress admin, go to **Plugins** and verify the Form Builder plugin shows version 1.1.0.
+In WordPress admin, go to **Plugins** and verify the Konstruct Form Builder plugin shows version 1.1.0.
 
 ### Step 2: Check Form Builder Page
-1. Go to **Form Builder** → **Add New**
+1. Go to **Konstruct Form Builder** → **Add New**
 2. You should see three tabs in the right sidebar: "Webhook", "Email Notifications", "Custom JS"
 3. Click on "Email Notifications" tab
 4. You should see options for step and submission notifications

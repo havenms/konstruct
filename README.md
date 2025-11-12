@@ -1,6 +1,6 @@
-# Form Builder Microsaas WordPress Plugin
+# Konstruct Form Builder WordPress Plugin
 
-A standalone HTML-CSS-JS form builder microsaas that creates paginated forms with configurable per-page webhooks. All data is stored in the WordPress database.
+A standalone HTML-CSS-JS form builder that creates paginated forms with configurable per-page webhooks. All data is stored in the WordPress database.
 
 ## Features
 
@@ -18,13 +18,13 @@ A standalone HTML-CSS-JS form builder microsaas that creates paginated forms wit
 
 1. Upload the `form-builder-plugin` folder to `/wp-content/plugins/`
 2. Activate the plugin through the 'Plugins' menu in WordPress
-3. Navigate to **Form Builder** in the WordPress admin menu
+3. Navigate to **Konstruct Form Builder** in the WordPress admin menu
 
 ## Usage
 
 ### Creating a Form
 
-1. Go to **Form Builder** → **Add New**
+1. Go to **Konstruct Form Builder** → **Add New**
 2. Enter a form name and slug
 3. Click field types in the sidebar to add fields
 4. Configure each field: label, name, placeholder, required status

@@ -1,21 +1,21 @@
 # Email Notifications Feature
 
-This document describes the new email notification functionality added to the Form Builder plugin.
+This document describes the new email notification functionality added to the Konstruct Form Builder plugin.
 
 ## Features
 
-The Form Builder now supports automatic email notifications for:
+The Konstruct Form Builder now supports automatic email notifications for:
 
 1. **Step Completion Notifications** - Sent when a user completes any step/page of a form
 2. **Final Submission Notifications** - Sent when a user completes the entire form
 
 ## Configuration
 
-Email notifications are configured in the Form Builder admin interface:
+Email notifications are configured in the Konstruct Form Builder admin interface:
 
 ### Accessing Email Settings
 
-1. Go to **Form Builder** > **Add New** or edit an existing form
+1. Go to **Konstruct Form Builder** > **Add New** or edit an existing form
 2. In the page settings panel on the right, click the **Email Notifications** tab
 3. Configure your notification settings
 

@@ -1,11 +1,11 @@
-# Form Builder Plugin - Quick Start Guide
+# Konstruct Form Builder - Quick Start Guide
 
 ## 🎯 Getting Started
 
 ### Creating a Form
 
-1. **Go to Form Builder**
-   - Navigate to WordPress Admin → Form Builder
+1. **Go to Konstruct Form Builder**
+   - Navigate to WordPress Admin → Konstruct Form Builder
 
 2. **Click "Add New Form"**
    - Enter a form name (e.g., "Contact Us")
@@ -93,7 +93,7 @@ Use these Field Name keywords for smart autofill:
 ## 📊 Viewing Submissions
 
 1. **Go to Submissions Dashboard**
-   - WordPress Admin → Form Builder → Submissions
+   - WordPress Admin → Konstruct Form Builder → Submissions
 
 2. **Filter Submissions**
    - By Form: Select form from dropdown

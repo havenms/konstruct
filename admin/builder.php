@@ -35,7 +35,7 @@ $field_types = $builder->get_field_types();
 ?>
 
 <div class="wrap form-builder-admin">
-    <h1><?php echo $action === 'edit' ? __('Edit Form', 'form-builder-microsaas') : ($action === 'new' ? __('Add New Form', 'form-builder-microsaas') : __('Form Builder', 'form-builder-microsaas')); ?></h1>
+    <h1><?php echo $action === 'edit' ? __('Edit Form', 'form-builder-microsaas') : ($action === 'new' ? __('Add New Form', 'form-builder-microsaas') : __('Konstruct Form Builder', 'form-builder-microsaas')); ?></h1>
     
     <?php if ($action === 'list'): ?>
         <!-- Forms List -->
