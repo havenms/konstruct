@@ -97,6 +97,13 @@
 
     FormBuilderInstance.prototype.handleFieldChange = function (e) {
         const field = e.target;
+        
+        // Skip link fields (they're not form inputs)
+        const fieldContainer = field.closest('.form-builder-field');
+        if (fieldContainer && fieldContainer.classList.contains('form-builder-field-link')) {
+            return;
+        }
+        
         let fieldName = field.name;
 
         // If field name is empty, try to find it in the current page config
@@ -508,6 +515,10 @@
         
         if (currentPageConfig && currentPageConfig.fields) {
             currentPageConfig.fields.forEach(function (field) {
+                // Skip link fields (they don't have form data)
+                if (field.type === 'link') {
+                    return;
+                }
                 if (this.formData[field.name]) {
                     currentPageFields[field.name] = this.formData[field.name];
                 }

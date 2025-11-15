@@ -148,6 +148,10 @@ class Form_Builder_Renderer {
                     $this->render_file($field_id, $field_name, $required);
                     break;
                 
+                case 'link':
+                    $this->render_link($field_id, $field_name, $field);
+                    break;
+                
                 default:
                     $this->render_input($field_id, $field_name, $field_type, $required, $placeholder);
                     break;
@@ -306,6 +310,30 @@ class Form_Builder_Renderer {
             class="form-builder-file"
             <?php echo $required ? 'required' : ''; ?>
         />
+        <?php
+    }
+    
+    /**
+     * Render link button
+     */
+    private function render_link($id, $name, $field) {
+        $url = isset($field['url']) && !empty($field['url']) ? esc_url($field['url']) : '#';
+        $target = isset($field['target']) && $field['target'] === 'new' ? '_blank' : '_self';
+        $button_text = isset($field['button_text']) && !empty($field['button_text']) ? esc_html($field['button_text']) : esc_html($field['label']);
+        $button_style = isset($field['button_style']) ? esc_attr($field['button_style']) : 'primary';
+        
+        ?>
+        <a 
+            href="<?php echo $url; ?>" 
+            target="<?php echo esc_attr($target); ?>"
+            class="form-builder-link-button form-builder-link-<?php echo $button_style; ?>"
+            id="<?php echo esc_attr($id); ?>"
+            <?php if ($target === '_blank'): ?>
+                rel="noopener noreferrer"
+            <?php endif; ?>
+        >
+            <?php echo $button_text; ?>
+        </a>
         <?php
     }
     

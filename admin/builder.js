@@ -728,6 +728,47 @@ Best regards,
             });
         }
 
+        // Link field specific properties
+        if (field.type === 'link') {
+            // URL
+            const $url = $('<div class="property-item">');
+            $url.append('<label>URL</label>');
+            $url.append('<input type="url" id="field-url" class="regular-text" value="' + escapeHtml(field.url || '') + '" placeholder="https://example.com">');
+            $props.append($url);
+            $('#field-url').off('input').on('input', function () {
+                field.url = $(this).val();
+            });
+
+            // Button Text
+            const $buttonText = $('<div class="property-item">');
+            $buttonText.append('<label>Button Text</label>');
+            $buttonText.append('<input type="text" id="field-button-text" class="regular-text" value="' + escapeHtml(field.button_text || '') + '" placeholder="Click Here">');
+            $props.append($buttonText);
+            $('#field-button-text').off('input').on('input', function () {
+                field.button_text = $(this).val();
+            });
+
+            // Target
+            const $target = $('<div class="property-item">');
+            $target.append('<label>Open Link In</label>');
+            const targetValue = field.target || 'same';
+            $target.append('<select id="field-target" class="regular-text"><option value="same"' + (targetValue === 'same' ? ' selected' : '') + '>Same Tab</option><option value="new"' + (targetValue === 'new' ? ' selected' : '') + '>New Tab</option></select>');
+            $props.append($target);
+            $('#field-target').off('change').on('change', function () {
+                field.target = $(this).val();
+            });
+
+            // Button Style
+            const $style = $('<div class="property-item">');
+            $style.append('<label>Button Style</label>');
+            const styleValue = field.button_style || 'primary';
+            $style.append('<select id="field-button-style" class="regular-text"><option value="primary"' + (styleValue === 'primary' ? ' selected' : '') + '>Primary (Blue)</option><option value="secondary"' + (styleValue === 'secondary' ? ' selected' : '') + '>Secondary (Gray)</option><option value="success"' + (styleValue === 'success' ? ' selected' : '') + '>Success (Green)</option><option value="outline"' + (styleValue === 'outline' ? ' selected' : '') + '>Outline</option></select>');
+            $props.append($style);
+            $('#field-button-style').off('change').on('change', function () {
+                field.button_style = $(this).val();
+            });
+        }
+
         // Helper text
         const $helper = $('<p class="property-helper">💡 Changes to label and options update immediately. Click Save Form to persist changes.</p>');
         $props.append($helper);
@@ -749,6 +790,14 @@ Best regards,
             placeholder: '',
             options: type === 'select' || type === 'radio' || type === 'checkbox' ? ['Option 1', 'Option 2', 'Option 3'] : []
         };
+
+        // Add link-specific defaults
+        if (type === 'link') {
+            field.url = 'https://example.com';
+            field.button_text = 'Click Here';
+            field.target = 'same';
+            field.button_style = 'primary';
+        }
 
         page.fields.push(field);
         currentFieldIndex = page.fields.length - 1;

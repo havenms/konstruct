@@ -139,6 +139,7 @@ Best regards,
             'checkbox' => 'Checkboxes',
             'file' => 'File Upload',
             'date' => 'Date',
+            'link' => 'Link Button',
         );
     }
 }
