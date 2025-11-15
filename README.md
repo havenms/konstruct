@@ -33,6 +33,29 @@ A standalone HTML-CSS-JS form builder that creates paginated forms with configur
 7. Configure email notifications in the "Email Notifications" tab
 8. Click "Save Form"
 
+### Import & Export Forms
+
+**Exporting Forms**
+
+1. Go to **Konstruct Form Builder** (forms list)
+2. Click **Export** next to any form
+3. A JSON file will be downloaded with the complete form configuration
+
+**Importing Forms**
+
+1. Go to **Konstruct Form Builder** (forms list)
+2. Click **Import Form**
+3. Select a JSON file exported from Form Builder
+4. Click **Import**
+5. The form will be imported and you'll be redirected to edit it
+
+**Import Features:**
+
+- Automatically handles naming conflicts (adds "Copy" suffix)
+- Validates JSON format and required fields
+- Preserves all form structure, fields, and settings
+- Creates new form IDs to avoid conflicts
+
 ### Embedding a Form
 
 Use the shortcode in any post or page:
@@ -128,4 +151,3 @@ form-builder-plugin/
 ## License
 
 GPL v2 or later
-

@@ -11,6 +11,227 @@
   let currentPageIndex = 0;
   let currentFieldIndex = null;
 
+  /**
+   * Notification System
+   */
+  const FormBuilderNotifications = {
+    container: null,
+
+    init: function () {
+      this.container = document.getElementById("form-builder-notifications");
+      if (!this.container) {
+        // Create container if it doesn't exist
+        this.container = document.createElement("div");
+        this.container.id = "form-builder-notifications";
+        this.container.className = "form-builder-notifications";
+        document.body.appendChild(this.container);
+      }
+    },
+
+    show: function (message, type = "info", title = null, duration = 5000) {
+      this.init();
+
+      const notification = document.createElement("div");
+      notification.className = `form-builder-notification ${type}`;
+
+      const icon = this.getIcon(type);
+      const hasTitle = title && title.trim() !== "";
+
+      notification.innerHTML = `
+        <div class="form-builder-notification-icon">${icon}</div>
+        <div class="form-builder-notification-content">
+          ${
+            hasTitle
+              ? `<div class="form-builder-notification-title">${this.escapeHtml(
+                  title
+                )}</div>`
+              : ""
+          }
+          <div class="form-builder-notification-message">${this.escapeHtml(
+            message
+          )}</div>
+        </div>
+        <button type="button" class="form-builder-notification-close">&times;</button>
+        ${
+          duration > 0
+            ? `<div class="form-builder-notification-progress">
+          <div class="form-builder-notification-progress-bar" style="animation-duration: ${duration}ms;"></div>
+        </div>`
+            : ""
+        }
+      `;
+
+      // Add close handler
+      const closeBtn = notification.querySelector(
+        ".form-builder-notification-close"
+      );
+      closeBtn.addEventListener("click", () => this.remove(notification));
+
+      // Add to container
+      this.container.appendChild(notification);
+
+      // Auto remove after duration
+      if (duration > 0) {
+        setTimeout(() => this.remove(notification), duration);
+      }
+
+      return notification;
+    },
+
+    success: function (message, title = "Success", duration = 4000) {
+      return this.show(message, "success", title, duration);
+    },
+
+    error: function (message, title = "Error", duration = 8000) {
+      return this.show(message, "error", title, duration);
+    },
+
+    warning: function (message, title = "Warning", duration = 6000) {
+      return this.show(message, "warning", title, duration);
+    },
+
+    info: function (message, title = null, duration = 5000) {
+      return this.show(message, "info", title, duration);
+    },
+
+    remove: function (notification) {
+      if (notification && notification.parentNode) {
+        notification.style.animation = "slideOutRight 0.3s ease-out forwards";
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 300);
+      }
+    },
+
+    clear: function () {
+      if (this.container) {
+        this.container.innerHTML = "";
+      }
+    },
+
+    getIcon: function (type) {
+      const icons = {
+        success: "✓",
+        error: "✕",
+        warning: "⚠",
+        info: "ℹ",
+      };
+      return icons[type] || icons.info;
+    },
+
+    escapeHtml: function (text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    },
+  };
+
+  /**
+   * Confirmation Dialog System
+   */
+  const FormBuilderConfirm = {
+    dialog: null,
+
+    init: function () {
+      this.dialog = document.getElementById("form-builder-confirm-dialog");
+      if (!this.dialog) {
+        // Create dialog if it doesn't exist
+        this.dialog = document.createElement("div");
+        this.dialog.id = "form-builder-confirm-dialog";
+        this.dialog.className = "form-builder-confirm-dialog";
+        this.dialog.style.display = "none";
+        this.dialog.innerHTML = `
+          <div class="form-builder-confirm-content">
+            <div class="form-builder-confirm-header">
+              <h3 id="form-builder-confirm-title" class="form-builder-confirm-title">Confirm Action</h3>
+            </div>
+            <div class="form-builder-confirm-body">
+              <p id="form-builder-confirm-message" class="form-builder-confirm-message">Are you sure?</p>
+            </div>
+            <div class="form-builder-confirm-footer">
+              <button type="button" id="form-builder-confirm-cancel" class="button">Cancel</button>
+              <button type="button" id="form-builder-confirm-ok" class="button button-primary">Confirm</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(this.dialog);
+      }
+    },
+
+    show: function (
+      message,
+      title = "Confirm Action",
+      okText = "Confirm",
+      cancelText = "Cancel"
+    ) {
+      return new Promise((resolve) => {
+        this.init();
+
+        const titleEl = document.getElementById("form-builder-confirm-title");
+        const messageEl = document.getElementById(
+          "form-builder-confirm-message"
+        );
+        const okBtn = document.getElementById("form-builder-confirm-ok");
+        const cancelBtn = document.getElementById(
+          "form-builder-confirm-cancel"
+        );
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        okBtn.textContent = okText;
+        cancelBtn.textContent = cancelText;
+
+        // Show dialog
+        this.dialog.style.display = "flex";
+
+        // Handle buttons
+        const handleOk = () => {
+          this.hide();
+          resolve(true);
+        };
+
+        const handleCancel = () => {
+          this.hide();
+          resolve(false);
+        };
+
+        // Remove existing listeners
+        okBtn.removeEventListener("click", handleOk);
+        cancelBtn.removeEventListener("click", handleCancel);
+
+        // Add new listeners
+        okBtn.addEventListener("click", handleOk);
+        cancelBtn.addEventListener("click", handleCancel);
+
+        // Handle ESC key and outside click
+        const handleKeydown = (e) => {
+          if (e.key === "Escape") {
+            document.removeEventListener("keydown", handleKeydown);
+            handleCancel();
+          }
+        };
+
+        const handleOutsideClick = (e) => {
+          if (e.target === this.dialog) {
+            this.dialog.removeEventListener("click", handleOutsideClick);
+            handleCancel();
+          }
+        };
+
+        document.addEventListener("keydown", handleKeydown);
+        this.dialog.addEventListener("click", handleOutsideClick);
+      });
+    },
+
+    hide: function () {
+      if (this.dialog) {
+        this.dialog.style.display = "none";
+      }
+    },
+  };
+
   // Initialize
   $(document).ready(function () {
     if ($("#form-data").length) {
@@ -215,23 +436,27 @@ Best regards,
         e.preventDefault();
         e.stopPropagation();
         const pageIdx = $(this).closest(".page-item").data("index");
-        if (
-          confirm(
-            "Are you sure you want to delete this page? All fields will be removed."
-          )
-        ) {
-          if (formData.pages.length === 1) {
-            alert("You must have at least one page");
-            return;
-          }
-          formData.pages.splice(pageIdx, 1);
-          if (currentPageIndex >= formData.pages.length) {
-            currentPageIndex = formData.pages.length - 1;
-          }
-          currentFieldIndex = null;
-          renderPages();
-          renderCurrentPage();
+        if (formData.pages.length === 1) {
+          FormBuilderNotifications.error("You must have at least one page", "Cannot Delete Page");
+          return;
         }
+        
+        FormBuilderConfirm.show(
+          "Are you sure you want to delete this page? All fields will be removed.",
+          "Delete Page",
+          "Delete",
+          "Cancel"
+        ).then((confirmed) => {
+          if (confirmed) {
+            formData.pages.splice(pageIdx, 1);
+            if (currentPageIndex >= formData.pages.length) {
+              currentPageIndex = formData.pages.length - 1;
+            }
+            currentFieldIndex = null;
+            renderPages();
+            renderCurrentPage();
+          }
+        });
       });
     }, 0);
   }
@@ -1260,12 +1485,14 @@ Best regards,
     const formSlug = $("#form-slug").val().trim();
 
     if (!formName) {
-      alert("Please enter a form name");
+      FormBuilderNotifications.error("Please enter a form name", "Validation Error");
+      $("#form-name").focus();
       return;
     }
 
     if (!formSlug) {
-      alert("Please enter a form slug");
+      FormBuilderNotifications.error("Please enter a form slug", "Validation Error");
+      $("#form-slug").focus();
       return;
     }
 
@@ -1279,7 +1506,7 @@ Best regards,
     );
 
     if (totalFields === 0) {
-      alert("Please add at least one field to the form");
+      FormBuilderNotifications.error("Please add at least one field to the form", "Validation Error");
       return;
     }
 
@@ -1308,6 +1535,11 @@ Best regards,
       data.id = parseInt(formId);
     }
 
+    // Show loading state
+    const $saveBtn = $("#save-form");
+    const originalText = $saveBtn.text();
+    $saveBtn.prop("disabled", true).text("Saving...");
+
     $.ajax({
       url: formBuilderAdmin.apiUrl + "forms",
       method: "POST",
@@ -1317,12 +1549,16 @@ Best regards,
         xhr.setRequestHeader("X-WP-Nonce", formBuilderAdmin.nonce);
       },
       success: function (response) {
-        alert("Form saved successfully!");
+        FormBuilderNotifications.success("Form saved successfully!", "Success");
         if (!formId) {
-          window.location.href =
-            formBuilderAdmin.adminUrl +
-            "?page=form-builder&action=edit&form_id=" +
-            response.id;
+          // Show redirect notification
+          FormBuilderNotifications.info("Redirecting to form editor...", "Info", 2000);
+          setTimeout(() => {
+            window.location.href =
+              formBuilderAdmin.adminUrl +
+              "?page=form-builder&action=edit&form_id=" +
+              response.id;
+          }, 1000);
         } else {
           // Update the copy shortcode button if it exists
           const $copyBtn = $("#copy-shortcode");
@@ -1334,7 +1570,11 @@ Best regards,
       error: function (xhr) {
         const errorMsg =
           xhr.responseJSON?.message || xhr.responseText || "Unknown error";
-        alert("Error saving form: " + errorMsg);
+        FormBuilderNotifications.error("Error saving form: " + errorMsg, "Save Failed");
+      },
+      complete: function () {
+        // Restore button state
+        $saveBtn.prop("disabled", false).text(originalText);
       },
     });
   }
@@ -1376,7 +1616,11 @@ Best regards,
               formBuilderAdmin.adminUrl +
               "?page=form-builder&action=edit&form_id=" +
               form.id +
-              '">Edit</a> | <a href="#" class="delete-form" data-id="' +
+              '">Edit</a> | <a href="#" class="export-form" data-id="' +
+              form.id +
+              '" data-slug="' +
+              escapeHtml(form.form_slug) +
+              '">Export</a> | <a href="#" class="delete-form" data-id="' +
               form.id +
               '">Delete</a> | <button type="button" class="copy-shortcode-link" data-form-id="' +
               form.id +
@@ -1388,26 +1632,32 @@ Best regards,
           // Delete handler
           $(".delete-form").on("click", function (e) {
             e.preventDefault();
-            if (
-              confirm(
-                "Are you sure you want to delete this form? This action cannot be undone."
-              )
-            ) {
-              const formId = $(this).data("id");
-              $.ajax({
-                url: formBuilderAdmin.apiUrl + "forms/" + formId,
-                method: "DELETE",
-                beforeSend: function (xhr) {
-                  xhr.setRequestHeader("X-WP-Nonce", formBuilderAdmin.nonce);
-                },
-                success: function () {
-                  loadFormsList();
-                },
-                error: function () {
-                  alert("Error deleting form");
-                },
-              });
-            }
+            const formId = $(this).data("id");
+            const formName = $(this).closest("tr").find("td:first").text();
+            
+            FormBuilderConfirm.show(
+              `Are you sure you want to delete the form "${formName}"? This action cannot be undone.`,
+              "Delete Form",
+              "Delete",
+              "Cancel"
+            ).then((confirmed) => {
+              if (confirmed) {
+                $.ajax({
+                  url: formBuilderAdmin.apiUrl + "forms/" + formId,
+                  method: "DELETE",
+                  beforeSend: function (xhr) {
+                    xhr.setRequestHeader("X-WP-Nonce", formBuilderAdmin.nonce);
+                  },
+                  success: function () {
+                    FormBuilderNotifications.success("Form deleted successfully", "Success");
+                    loadFormsList();
+                  },
+                  error: function () {
+                    FormBuilderNotifications.error("Error deleting form", "Delete Failed");
+                  },
+                });
+              }
+            });
           });
 
           // Copy shortcode handler (for forms list)
@@ -1415,6 +1665,14 @@ Best regards,
             e.preventDefault();
             const formId = $(this).data("form-id");
             copyShortcodeToClipboard(formId);
+          });
+
+          // Export handler
+          $(".export-form").on("click", function (e) {
+            e.preventDefault();
+            const formId = $(this).data("id");
+            const formSlug = $(this).data("slug");
+            exportForm(formId, formSlug);
           });
         } else {
           $tbody.append(
@@ -1514,29 +1772,14 @@ Best regards,
    * Show copy success feedback
    */
   function showCopySuccess() {
-    // Create or update success message
-    let $message = $("#copy-shortcode-message");
-    if ($message.length === 0) {
-      $message = $(
-        '<div id="copy-shortcode-message" style="position: fixed; top: 32px; right: 32px; background: var(--color-success); color: white; padding: 12px 20px; border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 10000; font-weight: 500; font-size: 14px; display: flex; align-items: center; gap: 8px;"></div>'
-      );
-      $("body").append($message);
-    }
-
-    $message.html("✓ Shortcode copied to clipboard!").fadeIn();
-
-    setTimeout(function () {
-      $message.fadeOut(function () {
-        $message.remove();
-      });
-    }, 2000);
+    FormBuilderNotifications.success("Shortcode copied to clipboard!", "Copy Successful", 3000);
   }
 
   /**
    * Show copy error feedback
    */
   function showCopyError(shortcode) {
-    alert("Failed to copy shortcode. Please copy manually: " + shortcode);
+    FormBuilderNotifications.error("Failed to copy shortcode. Please copy manually: " + shortcode, "Copy Failed", 8000);
   }
 
   /**
@@ -1548,4 +1791,172 @@ Best regards,
     }
     return formData.pages[currentPageIndex].fields || [];
   }
+
+  /**
+   * Export form
+   */
+  function exportForm(formId, formSlug) {
+    $.ajax({
+      url: formBuilderAdmin.apiUrl + "forms/" + formId + "/export",
+      method: "GET",
+      beforeSend: function (xhr) {
+        xhr.setRequestHeader("X-WP-Nonce", formBuilderAdmin.nonce);
+      },
+      success: function (response) {
+        // Create downloadable file
+        const dataStr = JSON.stringify(response, null, 2);
+        const dataBlob = new Blob([dataStr], { type: "application/json" });
+
+        const link = document.createElement("a");
+        link.href = window.URL.createObjectURL(dataBlob);
+        link.download =
+          "form-" +
+          formSlug +
+          "-" +
+          new Date().toISOString().split("T")[0] +
+          ".json";
+        link.style.display = "none";
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Clean up
+        window.URL.revokeObjectURL(link.href);
+      },
+      error: function (xhr) {
+        let errorMessage = "An error occurred while exporting the form.";
+        if (xhr.responseJSON && xhr.responseJSON.message) {
+          errorMessage = xhr.responseJSON.message;
+        }
+        FormBuilderNotifications.error(errorMessage, "Export Failed");
+      },
+    });
+  }
+
+  /**
+   * Setup import modal handlers
+   */
+  function setupImportHandlers() {
+    // Import button click
+    $("#import-form-btn").on("click", function () {
+      $("#import-form-modal").show();
+    });
+
+    // Modal close handlers
+    $(".form-builder-modal-close").on("click", function () {
+      $("#import-form-modal").hide();
+      resetImportForm();
+    });
+
+    // Click outside modal to close
+    $("#import-form-modal").on("click", function (e) {
+      if (e.target === this) {
+        $(this).hide();
+        resetImportForm();
+      }
+    });
+
+    // File input change
+    $("#import-file-input").on("change", function () {
+      const file = this.files[0];
+      const $submitBtn = $("#import-form-submit");
+      const $status = $("#import-status");
+
+      if (file) {
+        if (file.type !== "application/json" && !file.name.endsWith(".json")) {
+          $status.html(
+            '<div class="notice notice-error"><p>Please select a valid JSON file.</p></div>'
+          );
+          $submitBtn.prop("disabled", true);
+          return;
+        }
+
+        $status.html(
+          '<div class="notice notice-info"><p>File selected: ' +
+            escapeHtml(file.name) +
+            "</p></div>"
+        );
+        $submitBtn.prop("disabled", false);
+      } else {
+        $status.empty();
+        $submitBtn.prop("disabled", true);
+      }
+    });
+
+    // Import submit
+    $("#import-form-submit").on("click", function () {
+      const fileInput = document.getElementById("import-file-input");
+      const file = fileInput.files[0];
+
+      if (!file) {
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("import_file", file);
+
+      const $submitBtn = $(this);
+      const $status = $("#import-status");
+
+      $submitBtn.prop("disabled", true).text("Importing...");
+      $status.html(
+        '<div class="notice notice-info"><p>Importing form...</p></div>'
+      );
+
+      $.ajax({
+        url: formBuilderAdmin.apiUrl + "forms/import",
+        method: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+        beforeSend: function (xhr) {
+          xhr.setRequestHeader("X-WP-Nonce", formBuilderAdmin.nonce);
+        },
+        success: function (response) {
+          $status.html(
+            '<div class="notice notice-success"><p>Form imported successfully! Redirecting to editor...</p></div>'
+          );
+
+          // Redirect to edit the imported form
+          setTimeout(function () {
+            window.location.href =
+              formBuilderAdmin.adminUrl +
+              "?page=form-builder&action=edit&form_id=" +
+              response.form.id;
+          }, 1500);
+        },
+        error: function (xhr) {
+          let errorMessage = "An error occurred while importing the form.";
+
+          if (xhr.responseJSON && xhr.responseJSON.message) {
+            errorMessage = xhr.responseJSON.message;
+          }
+
+          $status.html(
+            '<div class="notice notice-error"><p>' +
+              escapeHtml(errorMessage) +
+              "</p></div>"
+          );
+          $submitBtn.prop("disabled", false).text("Import");
+        },
+      });
+    });
+  }
+
+  /**
+   * Reset import form
+   */
+  function resetImportForm() {
+    $("#import-file-input").val("");
+    $("#import-status").empty();
+    $("#import-form-submit").prop("disabled", true).text("Import");
+  }
+
+  // Initialize import handlers when in list mode
+  $(document).ready(function () {
+    if (!$("#form-data").length) {
+      setupImportHandlers();
+    }
+  });
 })(jQuery);

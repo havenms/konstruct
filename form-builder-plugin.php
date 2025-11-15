@@ -299,6 +299,18 @@ class Form_Builder_Microsaas {
             'permission_callback' => '__return_true',
         ));
 
+        register_rest_route('form-builder/v1', '/forms/(?P<id>\d+)/export', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'export_form'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
+
+        register_rest_route('form-builder/v1', '/forms/import', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'import_form'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
+
         // Protected file download route (admins only)
         register_rest_route('form-builder/v1', '/file', array(
             'methods' => 'GET',
@@ -846,6 +858,67 @@ class Form_Builder_Microsaas {
             'success' => true,
             'email_sent' => $email_result,
             'submission_uuid' => $submission_uuid
+        ), 200);
+    }
+    
+    /**
+     * Export form
+     */
+    public function export_form($request) {
+        $id = $request->get_param('id');
+        $builder = new Form_Builder_Builder();
+        
+        $export_data = $builder->export_form($id);
+        
+        if (is_wp_error($export_data)) {
+            return $export_data;
+        }
+        
+        // Set headers for file download
+        $filename = 'form-' . $export_data['form']['slug'] . '-' . date('Y-m-d') . '.json';
+        
+        return new WP_REST_Response($export_data, 200, array(
+            'Content-Type' => 'application/json',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"'
+        ));
+    }
+    
+    /**
+     * Import form
+     */
+    public function import_form($request) {
+        $files = $request->get_file_params();
+        
+        if (empty($files['import_file'])) {
+            return new WP_Error('no_file', 'No import file provided', array('status' => 400));
+        }
+        
+        $file = $files['import_file'];
+        
+        // Validate file type
+        if ($file['type'] !== 'application/json' && pathinfo($file['name'], PATHINFO_EXTENSION) !== 'json') {
+            return new WP_Error('invalid_file_type', 'Only JSON files are allowed', array('status' => 400));
+        }
+        
+        // Read file contents
+        $json_content = file_get_contents($file['tmp_name']);
+        
+        if ($json_content === false) {
+            return new WP_Error('file_read_error', 'Could not read file', array('status' => 500));
+        }
+        
+        // Import the form
+        $builder = new Form_Builder_Builder();
+        $result = $builder->import_form($json_content);
+        
+        if (is_wp_error($result)) {
+            return $result;
+        }
+        
+        return new WP_REST_Response(array(
+            'success' => true,
+            'form' => $result,
+            'message' => 'Form imported successfully'
         ), 200);
     }
 }
