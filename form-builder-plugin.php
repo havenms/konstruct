@@ -16,9 +16,12 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('FORM_BUILDER_VERSION', '1.1.2');
+define('FORM_BUILDER_VERSION', '1.2.0');
 define('FORM_BUILDER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('FORM_BUILDER_PLUGIN_URL', plugin_dir_url(__FILE__));
+
+// Development mode - set to true during development to enable aggressive cache busting
+define('FORM_BUILDER_DEV_MODE', defined('WP_DEBUG') && WP_DEBUG);
 
 /**
  * Main Plugin Class
@@ -225,6 +228,14 @@ class Form_Builder_Microsaas {
      * Render builder admin page
      */
     public function render_builder_page() {
+        // Add cache-busting headers for admin pages to help with LiteSpeed Cache
+        if (!headers_sent()) {
+            header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
+            header('Pragma: no-cache');
+            header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+            header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+        }
+        
         require_once FORM_BUILDER_PLUGIN_DIR . 'admin/builder.php';
     }
 
@@ -232,6 +243,14 @@ class Form_Builder_Microsaas {
      * Render submissions admin page
      */
     public function render_submissions_page() {
+        // Add cache-busting headers for admin pages to help with LiteSpeed Cache
+        if (!headers_sent()) {
+            header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
+            header('Pragma: no-cache');
+            header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+            header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+        }
+        
         require_once FORM_BUILDER_PLUGIN_DIR . 'admin/submissions.php';
     }
     
@@ -689,18 +708,29 @@ class Form_Builder_Microsaas {
             return;
         }
         
+        // Add cache-busting headers for admin pages
+        if (!headers_sent()) {
+            header('Cache-Control: no-cache, no-store, must-revalidate');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+        }
+        
+        // Generate dynamic version for cache busting
+        $css_version = $this->get_asset_version('admin/builder.css');
+        $js_version = $this->get_asset_version('admin/builder.js');
+        
         wp_enqueue_style(
             'form-builder-admin',
             FORM_BUILDER_PLUGIN_URL . 'admin/builder.css',
             array(),
-            FORM_BUILDER_VERSION
+            $css_version
         );
         
         wp_enqueue_script(
             'form-builder-admin',
             FORM_BUILDER_PLUGIN_URL . 'admin/builder.js',
             array('jquery'),
-            FORM_BUILDER_VERSION,
+            $js_version,
             true
         );
         
@@ -709,6 +739,8 @@ class Form_Builder_Microsaas {
             'nonce' => wp_create_nonce('wp_rest'),
             'saveNonce' => wp_create_nonce('form_builder_save'),
             'adminUrl' => admin_url('admin.php'),
+            'cacheKey' => time(), // Additional cache buster
+            'isDev' => defined('WP_DEBUG') && WP_DEBUG,
         ));
     }
     
@@ -920,6 +952,24 @@ class Form_Builder_Microsaas {
             'form' => $result,
             'message' => 'Form imported successfully'
         ), 200);
+    }
+    
+    /**
+     * Get asset version for cache busting
+     */
+    private function get_asset_version($asset_path) {
+        // In development mode, use file modification time for aggressive cache busting
+        if (FORM_BUILDER_DEV_MODE) {
+            $file_path = FORM_BUILDER_PLUGIN_DIR . $asset_path;
+            if (file_exists($file_path)) {
+                return filemtime($file_path);
+            }
+            // If file doesn't exist, use current timestamp
+            return time();
+        }
+        
+        // In production, use version + timestamp for cache busting with LiteSpeed
+        return FORM_BUILDER_VERSION . '.' . time();
     }
 }
 

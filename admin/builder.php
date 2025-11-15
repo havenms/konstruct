@@ -35,6 +35,29 @@ $field_types = $builder->get_field_types();
 ?>
 
 <div class="wrap form-builder-admin">
+    <!-- Cache busting meta tags -->
+    <script type="text/javascript">
+        // Add cache busting meta tags
+        if (typeof formBuilderAdmin !== 'undefined' && formBuilderAdmin.isDev) {
+            var metaNoCache = document.createElement('meta');
+            metaNoCache.setAttribute('http-equiv', 'Cache-Control');
+            metaNoCache.setAttribute('content', 'no-cache, no-store, must-revalidate');
+            document.head.appendChild(metaNoCache);
+            
+            var metaPragma = document.createElement('meta');
+            metaPragma.setAttribute('http-equiv', 'Pragma');
+            metaPragma.setAttribute('content', 'no-cache');
+            document.head.appendChild(metaPragma);
+            
+            var metaExpires = document.createElement('meta');
+            metaExpires.setAttribute('http-equiv', 'Expires');
+            metaExpires.setAttribute('content', '0');
+            document.head.appendChild(metaExpires);
+            
+            console.log('Cache busting meta tags added for development mode');
+        }
+    </script>
+    
     <h1><?php echo $action === 'edit' ? __('Edit Form', 'form-builder-microsaas') : ($action === 'new' ? __('Add New Form', 'form-builder-microsaas') : __('Konstruct Form Builder', 'form-builder-microsaas')); ?></h1>
     
     <?php if ($action === 'list'): ?>

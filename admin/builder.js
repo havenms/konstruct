@@ -12,6 +12,47 @@
   let currentFieldIndex = null;
 
   /**
+   * Cache Busting Utilities
+   */
+  const CacheBuster = {
+    getTimestamp: function() {
+      return Date.now();
+    },
+    
+    addCacheBusterToUrl: function(url) {
+      const separator = url.includes('?') ? '&' : '?';
+      return url + separator + '_cb=' + this.getTimestamp();
+    },
+    
+    getAjaxDefaults: function() {
+      return {
+        cache: false,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      };
+    }
+  };
+
+  /**
+   * Global AJAX Setup for Cache Busting
+   */
+  $.ajaxSetup({
+    cache: false,
+    beforeSend: function(xhr, settings) {
+      // Add cache busting to all AJAX requests
+      if (settings.url.indexOf(formBuilderAdmin.apiUrl) !== -1) {
+        settings.url = CacheBuster.addCacheBusterToUrl(settings.url);
+        xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        xhr.setRequestHeader('Pragma', 'no-cache');
+        xhr.setRequestHeader('Expires', '0');
+      }
+    }
+  });
+
+  /**
    * Notification System
    */
   const FormBuilderNotifications = {
@@ -999,11 +1040,13 @@ Best regards,
           '<span style="color: #646970;">Sending test email...</span>'
         );
 
-        $.ajax({
-          url: formBuilderAdmin.apiUrl + "test-email",
+        $.ajax($.extend(CacheBuster.getAjaxDefaults(), {
+          url: CacheBuster.addCacheBusterToUrl(formBuilderAdmin.apiUrl + "test-email"),
           method: "POST",
           headers: {
             "X-WP-Nonce": formBuilderAdmin.nonce,
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
           },
           contentType: "application/json",
           data: JSON.stringify({
@@ -1027,8 +1070,8 @@ Best regards,
           },
           complete: function () {
             $button.prop("disabled", false).text("Send Test Email");
-          },
-        });
+          }
+        }));
       });
 
     // Debug form config functionality
