@@ -1602,12 +1602,12 @@ Best regards,
    * Load forms list
    */
   function loadFormsList() {
-    console.log('Loading forms list...');
+    console.log("Loading forms list...");
     const $tbody = $("#forms-list");
-    
+
     // Show loading state
     $tbody.html('<tr><td colspan="6">Loading forms...</td></tr>');
-    
+
     $.ajax({
       url: formBuilderAdmin.apiUrl + "forms",
       method: "GET",
@@ -1615,7 +1615,7 @@ Best regards,
         xhr.setRequestHeader("X-WP-Nonce", formBuilderAdmin.nonce);
       },
       success: function (response) {
-        console.log('Forms loaded:', response);
+        console.log("Forms loaded:", response);
         $tbody.empty();
 
         if (response.forms && response.forms.length > 0) {
@@ -1655,74 +1655,79 @@ Best regards,
           });
 
           // Delete handler - use event delegation to avoid duplicate bindings
-          $tbody.off("click", ".delete-form").on("click", ".delete-form", function (e) {
-            e.preventDefault();
-            const $deleteBtn = $(this);
-            const formId = $deleteBtn.data("id");
-            const formName = $deleteBtn.closest("tr").find("td:first").text();
-            const $row = $deleteBtn.closest("tr");
+          $tbody
+            .off("click", ".delete-form")
+            .on("click", ".delete-form", function (e) {
+              e.preventDefault();
+              const $deleteBtn = $(this);
+              const formId = $deleteBtn.data("id");
+              const formName = $deleteBtn.closest("tr").find("td:first").text();
+              const $row = $deleteBtn.closest("tr");
 
-            FormBuilderConfirm.show(
-              `Are you sure you want to delete the form "${formName}"? This action cannot be undone.`,
-              "Delete Form",
-              "Delete",
-              "Cancel"
-            ).then((confirmed) => {
-              if (confirmed) {
-                // Add loading state to the row
-                $row.addClass("deleting").css("opacity", "0.5");
-                $deleteBtn.text("Deleting...");
-                
-                $.ajax({
-                  url: formBuilderAdmin.apiUrl + "forms/" + formId,
-                  method: "DELETE",
-                  beforeSend: function (xhr) {
-                    xhr.setRequestHeader("X-WP-Nonce", formBuilderAdmin.nonce);
-                  },
-                  success: function (response) {
-                    console.log('Form deleted successfully:', formId);
-                    
-                    // Remove the row immediately for better UX
-                    $row.fadeOut(300, function() {
-                      $row.remove();
-                      
-                      // Check if no forms left
-                      const remainingRows = $tbody.find("tr:not(.no-forms-row)");
-                      if (remainingRows.length === 0) {
-                        $tbody.append(
-                          '<tr class="no-forms-row"><td colspan="6">No forms found. <a href="' +
-                            formBuilderAdmin.adminUrl +
-                            '?page=form-builder-new">Create one</a></td></tr>'
+              FormBuilderConfirm.show(
+                `Are you sure you want to delete the form "${formName}"? This action cannot be undone.`,
+                "Delete Form",
+                "Delete",
+                "Cancel"
+              ).then((confirmed) => {
+                if (confirmed) {
+                  // Add loading state to the row
+                  $row.addClass("deleting").css("opacity", "0.5");
+                  $deleteBtn.text("Deleting...");
+
+                  $.ajax({
+                    url: formBuilderAdmin.apiUrl + "forms/" + formId,
+                    method: "DELETE",
+                    beforeSend: function (xhr) {
+                      xhr.setRequestHeader(
+                        "X-WP-Nonce",
+                        formBuilderAdmin.nonce
+                      );
+                    },
+                    success: function (response) {
+                      console.log("Form deleted successfully:", formId);
+
+                      // Remove the row immediately for better UX
+                      $row.fadeOut(300, function () {
+                        $row.remove();
+
+                        // Check if no forms left
+                        const remainingRows = $tbody.find(
+                          "tr:not(.no-forms-row)"
                         );
-                      }
-                    });
-                    
-                    FormBuilderNotifications.success(
-                      `Form "${formName}" deleted successfully`,
-                      "Success"
-                    );
-                    
-                    // Fallback: refresh the entire list after a delay to ensure consistency
-                    setTimeout(() => {
-                      console.log('Refreshing forms list as fallback...');
-                      loadFormsList();
-                    }, 2000);
-                  },
-                  error: function (xhr) {
-                    // Restore row state on error
-                    $row.removeClass("deleting").css("opacity", "1");
-                    $deleteBtn.text("Delete");
-                    
-                    const errorMsg = xhr.responseJSON?.message || "Error deleting form";
-                    FormBuilderNotifications.error(
-                      errorMsg,
-                      "Delete Failed"
-                    );
-                  },
-                });
-              }
+                        if (remainingRows.length === 0) {
+                          $tbody.append(
+                            '<tr class="no-forms-row"><td colspan="6">No forms found. <a href="' +
+                              formBuilderAdmin.adminUrl +
+                              '?page=form-builder-new">Create one</a></td></tr>'
+                          );
+                        }
+                      });
+
+                      FormBuilderNotifications.success(
+                        `Form "${formName}" deleted successfully`,
+                        "Success"
+                      );
+
+                      // Fallback: refresh the entire list after a delay to ensure consistency
+                      setTimeout(() => {
+                        console.log("Refreshing forms list as fallback...");
+                        loadFormsList();
+                      }, 2000);
+                    },
+                    error: function (xhr) {
+                      // Restore row state on error
+                      $row.removeClass("deleting").css("opacity", "1");
+                      $deleteBtn.text("Delete");
+
+                      const errorMsg =
+                        xhr.responseJSON?.message || "Error deleting form";
+                      FormBuilderNotifications.error(errorMsg, "Delete Failed");
+                    },
+                  });
+                }
+              });
             });
-          });
 
           // Copy shortcode handler (for forms list)
           $(document).on("click", ".copy-shortcode-link", function (e) {
@@ -1732,12 +1737,14 @@ Best regards,
           });
 
           // Export handler - use event delegation to avoid duplicate bindings
-          $tbody.off("click", ".export-form").on("click", ".export-form", function (e) {
-            e.preventDefault();
-            const formId = $(this).data("id");
-            const formSlug = $(this).data("slug");
-            exportForm(formId, formSlug);
-          });
+          $tbody
+            .off("click", ".export-form")
+            .on("click", ".export-form", function (e) {
+              e.preventDefault();
+              const formId = $(this).data("id");
+              const formSlug = $(this).data("slug");
+              exportForm(formId, formSlug);
+            });
         } else {
           $tbody.append(
             '<tr><td colspan="6">No forms found. <a href="' +
@@ -1747,12 +1754,15 @@ Best regards,
         }
       },
       error: function (xhr, status, error) {
-        console.error('Error loading forms:', { xhr, status, error });
-        const errorMsg = xhr.responseJSON?.message || 'Error loading forms';
+        console.error("Error loading forms:", { xhr, status, error });
+        const errorMsg = xhr.responseJSON?.message || "Error loading forms";
         $tbody.html(
           `<tr><td colspan="6">Error loading forms: ${errorMsg}</td></tr>`
         );
-        FormBuilderNotifications.error('Failed to load forms list', 'Load Error');
+        FormBuilderNotifications.error(
+          "Failed to load forms list",
+          "Load Error"
+        );
       },
     });
   }
