@@ -437,10 +437,13 @@ Best regards,
         e.stopPropagation();
         const pageIdx = $(this).closest(".page-item").data("index");
         if (formData.pages.length === 1) {
-          FormBuilderNotifications.error("You must have at least one page", "Cannot Delete Page");
+          FormBuilderNotifications.error(
+            "You must have at least one page",
+            "Cannot Delete Page"
+          );
           return;
         }
-        
+
         FormBuilderConfirm.show(
           "Are you sure you want to delete this page? All fields will be removed.",
           "Delete Page",
@@ -1485,13 +1488,19 @@ Best regards,
     const formSlug = $("#form-slug").val().trim();
 
     if (!formName) {
-      FormBuilderNotifications.error("Please enter a form name", "Validation Error");
+      FormBuilderNotifications.error(
+        "Please enter a form name",
+        "Validation Error"
+      );
       $("#form-name").focus();
       return;
     }
 
     if (!formSlug) {
-      FormBuilderNotifications.error("Please enter a form slug", "Validation Error");
+      FormBuilderNotifications.error(
+        "Please enter a form slug",
+        "Validation Error"
+      );
       $("#form-slug").focus();
       return;
     }
@@ -1506,7 +1515,10 @@ Best regards,
     );
 
     if (totalFields === 0) {
-      FormBuilderNotifications.error("Please add at least one field to the form", "Validation Error");
+      FormBuilderNotifications.error(
+        "Please add at least one field to the form",
+        "Validation Error"
+      );
       return;
     }
 
@@ -1552,7 +1564,11 @@ Best regards,
         FormBuilderNotifications.success("Form saved successfully!", "Success");
         if (!formId) {
           // Show redirect notification
-          FormBuilderNotifications.info("Redirecting to form editor...", "Info", 2000);
+          FormBuilderNotifications.info(
+            "Redirecting to form editor...",
+            "Info",
+            2000
+          );
           setTimeout(() => {
             window.location.href =
               formBuilderAdmin.adminUrl +
@@ -1570,7 +1586,10 @@ Best regards,
       error: function (xhr) {
         const errorMsg =
           xhr.responseJSON?.message || xhr.responseText || "Unknown error";
-        FormBuilderNotifications.error("Error saving form: " + errorMsg, "Save Failed");
+        FormBuilderNotifications.error(
+          "Error saving form: " + errorMsg,
+          "Save Failed"
+        );
       },
       complete: function () {
         // Restore button state
@@ -1583,6 +1602,12 @@ Best regards,
    * Load forms list
    */
   function loadFormsList() {
+    console.log('Loading forms list...');
+    const $tbody = $("#forms-list");
+    
+    // Show loading state
+    $tbody.html('<tr><td colspan="6">Loading forms...</td></tr>');
+    
     $.ajax({
       url: formBuilderAdmin.apiUrl + "forms",
       method: "GET",
@@ -1590,7 +1615,7 @@ Best regards,
         xhr.setRequestHeader("X-WP-Nonce", formBuilderAdmin.nonce);
       },
       success: function (response) {
-        const $tbody = $("#forms-list");
+        console.log('Forms loaded:', response);
         $tbody.empty();
 
         if (response.forms && response.forms.length > 0) {
@@ -1629,12 +1654,14 @@ Best regards,
             $tbody.append($row);
           });
 
-          // Delete handler
-          $(".delete-form").on("click", function (e) {
+          // Delete handler - use event delegation to avoid duplicate bindings
+          $tbody.off("click", ".delete-form").on("click", ".delete-form", function (e) {
             e.preventDefault();
-            const formId = $(this).data("id");
-            const formName = $(this).closest("tr").find("td:first").text();
-            
+            const $deleteBtn = $(this);
+            const formId = $deleteBtn.data("id");
+            const formName = $deleteBtn.closest("tr").find("td:first").text();
+            const $row = $deleteBtn.closest("tr");
+
             FormBuilderConfirm.show(
               `Are you sure you want to delete the form "${formName}"? This action cannot be undone.`,
               "Delete Form",
@@ -1642,18 +1669,55 @@ Best regards,
               "Cancel"
             ).then((confirmed) => {
               if (confirmed) {
+                // Add loading state to the row
+                $row.addClass("deleting").css("opacity", "0.5");
+                $deleteBtn.text("Deleting...");
+                
                 $.ajax({
                   url: formBuilderAdmin.apiUrl + "forms/" + formId,
                   method: "DELETE",
                   beforeSend: function (xhr) {
                     xhr.setRequestHeader("X-WP-Nonce", formBuilderAdmin.nonce);
                   },
-                  success: function () {
-                    FormBuilderNotifications.success("Form deleted successfully", "Success");
-                    loadFormsList();
+                  success: function (response) {
+                    console.log('Form deleted successfully:', formId);
+                    
+                    // Remove the row immediately for better UX
+                    $row.fadeOut(300, function() {
+                      $row.remove();
+                      
+                      // Check if no forms left
+                      const remainingRows = $tbody.find("tr:not(.no-forms-row)");
+                      if (remainingRows.length === 0) {
+                        $tbody.append(
+                          '<tr class="no-forms-row"><td colspan="6">No forms found. <a href="' +
+                            formBuilderAdmin.adminUrl +
+                            '?page=form-builder-new">Create one</a></td></tr>'
+                        );
+                      }
+                    });
+                    
+                    FormBuilderNotifications.success(
+                      `Form "${formName}" deleted successfully`,
+                      "Success"
+                    );
+                    
+                    // Fallback: refresh the entire list after a delay to ensure consistency
+                    setTimeout(() => {
+                      console.log('Refreshing forms list as fallback...');
+                      loadFormsList();
+                    }, 2000);
                   },
-                  error: function () {
-                    FormBuilderNotifications.error("Error deleting form", "Delete Failed");
+                  error: function (xhr) {
+                    // Restore row state on error
+                    $row.removeClass("deleting").css("opacity", "1");
+                    $deleteBtn.text("Delete");
+                    
+                    const errorMsg = xhr.responseJSON?.message || "Error deleting form";
+                    FormBuilderNotifications.error(
+                      errorMsg,
+                      "Delete Failed"
+                    );
                   },
                 });
               }
@@ -1667,8 +1731,8 @@ Best regards,
             copyShortcodeToClipboard(formId);
           });
 
-          // Export handler
-          $(".export-form").on("click", function (e) {
+          // Export handler - use event delegation to avoid duplicate bindings
+          $tbody.off("click", ".export-form").on("click", ".export-form", function (e) {
             e.preventDefault();
             const formId = $(this).data("id");
             const formSlug = $(this).data("slug");
@@ -1682,10 +1746,13 @@ Best regards,
           );
         }
       },
-      error: function () {
-        $("#forms-list").html(
-          '<tr><td colspan="6">Error loading forms</td></tr>'
+      error: function (xhr, status, error) {
+        console.error('Error loading forms:', { xhr, status, error });
+        const errorMsg = xhr.responseJSON?.message || 'Error loading forms';
+        $tbody.html(
+          `<tr><td colspan="6">Error loading forms: ${errorMsg}</td></tr>`
         );
+        FormBuilderNotifications.error('Failed to load forms list', 'Load Error');
       },
     });
   }
@@ -1772,14 +1839,22 @@ Best regards,
    * Show copy success feedback
    */
   function showCopySuccess() {
-    FormBuilderNotifications.success("Shortcode copied to clipboard!", "Copy Successful", 3000);
+    FormBuilderNotifications.success(
+      "Shortcode copied to clipboard!",
+      "Copy Successful",
+      3000
+    );
   }
 
   /**
    * Show copy error feedback
    */
   function showCopyError(shortcode) {
-    FormBuilderNotifications.error("Failed to copy shortcode. Please copy manually: " + shortcode, "Copy Failed", 8000);
+    FormBuilderNotifications.error(
+      "Failed to copy shortcode. Please copy manually: " + shortcode,
+      "Copy Failed",
+      8000
+    );
   }
 
   /**
