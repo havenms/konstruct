@@ -15,25 +15,25 @@
    * Cache Busting Utilities
    */
   const CacheBuster = {
-    getTimestamp: function() {
+    getTimestamp: function () {
       return Date.now();
     },
-    
-    addCacheBusterToUrl: function(url) {
-      const separator = url.includes('?') ? '&' : '?';
-      return url + separator + '_cb=' + this.getTimestamp();
+
+    addCacheBusterToUrl: function (url) {
+      const separator = url.includes("?") ? "&" : "?";
+      return url + separator + "_cb=" + this.getTimestamp();
     },
-    
-    getAjaxDefaults: function() {
+
+    getAjaxDefaults: function () {
       return {
         cache: false,
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
       };
-    }
+    },
   };
 
   /**
@@ -41,15 +41,18 @@
    */
   $.ajaxSetup({
     cache: false,
-    beforeSend: function(xhr, settings) {
+    beforeSend: function (xhr, settings) {
       // Add cache busting to all AJAX requests
       if (settings.url.indexOf(formBuilderAdmin.apiUrl) !== -1) {
         settings.url = CacheBuster.addCacheBusterToUrl(settings.url);
-        xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        xhr.setRequestHeader('Pragma', 'no-cache');
-        xhr.setRequestHeader('Expires', '0');
+        xhr.setRequestHeader(
+          "Cache-Control",
+          "no-cache, no-store, must-revalidate"
+        );
+        xhr.setRequestHeader("Pragma", "no-cache");
+        xhr.setRequestHeader("Expires", "0");
       }
-    }
+    },
   });
 
   /**
@@ -1040,38 +1043,42 @@ Best regards,
           '<span style="color: #646970;">Sending test email...</span>'
         );
 
-        $.ajax($.extend(CacheBuster.getAjaxDefaults(), {
-          url: CacheBuster.addCacheBusterToUrl(formBuilderAdmin.apiUrl + "test-email"),
-          method: "POST",
-          headers: {
-            "X-WP-Nonce": formBuilderAdmin.nonce,
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-          },
-          contentType: "application/json",
-          data: JSON.stringify({
-            email: email,
-          }),
-          success: function (response) {
-            console.log("Test email success:", response);
-            $result.html(
-              '<span style="color: #00a32a;">✓ Test email sent successfully!</span>'
-            );
-          },
-          error: function (xhr, status, error) {
-            console.error("Test email failed:", xhr.responseText);
-            let message = "Failed to send test email";
-            if (xhr.responseJSON && xhr.responseJSON.message) {
-              message = xhr.responseJSON.message;
-            }
-            $result.html(
-              '<span style="color: #d63638;">✗ ' + message + "</span>"
-            );
-          },
-          complete: function () {
-            $button.prop("disabled", false).text("Send Test Email");
-          }
-        }));
+        $.ajax(
+          $.extend(CacheBuster.getAjaxDefaults(), {
+            url: CacheBuster.addCacheBusterToUrl(
+              formBuilderAdmin.apiUrl + "test-email"
+            ),
+            method: "POST",
+            headers: {
+              "X-WP-Nonce": formBuilderAdmin.nonce,
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+            },
+            contentType: "application/json",
+            data: JSON.stringify({
+              email: email,
+            }),
+            success: function (response) {
+              console.log("Test email success:", response);
+              $result.html(
+                '<span style="color: #00a32a;">✓ Test email sent successfully!</span>'
+              );
+            },
+            error: function (xhr, status, error) {
+              console.error("Test email failed:", xhr.responseText);
+              let message = "Failed to send test email";
+              if (xhr.responseJSON && xhr.responseJSON.message) {
+                message = xhr.responseJSON.message;
+              }
+              $result.html(
+                '<span style="color: #d63638;">✗ ' + message + "</span>"
+              );
+            },
+            complete: function () {
+              $button.prop("disabled", false).text("Send Test Email");
+            },
+          })
+        );
       });
 
     // Debug form config functionality

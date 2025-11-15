@@ -10,6 +10,7 @@
 ## Immediate Steps for Production Server
 
 ### 1. Clear All Caches First
+
 ```bash
 # If using LiteSpeed Cache plugin
 # Go to: WP Admin > LiteSpeed Cache > Toolbox > Purge All
@@ -19,17 +20,20 @@
 ```
 
 ### 2. Quick LiteSpeed Cache Settings
+
 Navigate to: **WP Admin > LiteSpeed Cache > Cache > Excludes**
 
 Add these paths to the "Do Not Cache URIs" section:
+
 ```
 /wp-admin/admin.php?page=form-builder*
 /wp-json/form-builder/*
 ```
 
 ### 3. Test the Changes
+
 1. Go to your form builder admin page
-2. Open browser dev tools (F12) > Network tab  
+2. Open browser dev tools (F12) > Network tab
 3. Refresh the page
 4. Look for `?_cb=` parameters in the requests
 5. Try deleting a form - it should disappear immediately
@@ -37,6 +41,7 @@ Add these paths to the "Do Not Cache URIs" section:
 ### 4. If Still Having Issues
 
 Add this to your `.htaccess` file (in WordPress root):
+
 ```apache
 # Konstruct Form Builder - No Cache Admin
 <LocationMatch "wp-admin/admin\.php\?page=form-builder">
@@ -47,7 +52,9 @@ Add this to your `.htaccess` file (in WordPress root):
 ```
 
 ### 5. Enable Development Mode (Optional)
+
 Add this to `wp-config.php` for maximum cache busting during development:
+
 ```php
 define('WP_DEBUG', true);
 ```
