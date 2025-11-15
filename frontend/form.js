@@ -115,7 +115,7 @@
     if (
       fieldContainer &&
       (fieldContainer.classList.contains("form-builder-field-link") ||
-       fieldContainer.classList.contains("form-builder-field-label"))
+        fieldContainer.classList.contains("form-builder-field-label"))
     ) {
       return;
     }
@@ -196,7 +196,7 @@
         if (field.type === "label") {
           return;
         }
-        
+
         let fieldElement = this.formElement.querySelector(
           '[name="' + field.name + '"]'
         );

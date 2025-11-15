@@ -1119,15 +1119,31 @@ Best regards,
       const tagValue = field.label_tag || "h3";
       $tag.append(
         '<select id="field-label-tag" class="regular-text">' +
-          '<option value="h1"' + (tagValue === "h1" ? " selected" : "") + '>Heading 1 (h1)</option>' +
-          '<option value="h2"' + (tagValue === "h2" ? " selected" : "") + '>Heading 2 (h2)</option>' +
-          '<option value="h3"' + (tagValue === "h3" ? " selected" : "") + '>Heading 3 (h3)</option>' +
-          '<option value="h4"' + (tagValue === "h4" ? " selected" : "") + '>Heading 4 (h4)</option>' +
-          '<option value="h5"' + (tagValue === "h5" ? " selected" : "") + '>Heading 5 (h5)</option>' +
-          '<option value="h6"' + (tagValue === "h6" ? " selected" : "") + '>Heading 6 (h6)</option>' +
-          '<option value="p"' + (tagValue === "p" ? " selected" : "") + '>Paragraph (p)</option>' +
-          '<option value="div"' + (tagValue === "div" ? " selected" : "") + '>Division (div)</option>' +
-          '</select>'
+          '<option value="h1"' +
+          (tagValue === "h1" ? " selected" : "") +
+          ">Heading 1 (h1)</option>" +
+          '<option value="h2"' +
+          (tagValue === "h2" ? " selected" : "") +
+          ">Heading 2 (h2)</option>" +
+          '<option value="h3"' +
+          (tagValue === "h3" ? " selected" : "") +
+          ">Heading 3 (h3)</option>" +
+          '<option value="h4"' +
+          (tagValue === "h4" ? " selected" : "") +
+          ">Heading 4 (h4)</option>" +
+          '<option value="h5"' +
+          (tagValue === "h5" ? " selected" : "") +
+          ">Heading 5 (h5)</option>" +
+          '<option value="h6"' +
+          (tagValue === "h6" ? " selected" : "") +
+          ">Heading 6 (h6)</option>" +
+          '<option value="p"' +
+          (tagValue === "p" ? " selected" : "") +
+          ">Paragraph (p)</option>" +
+          '<option value="div"' +
+          (tagValue === "div" ? " selected" : "") +
+          ">Division (div)</option>" +
+          "</select>"
       );
       $props.append($tag);
       $("#field-label-tag")
@@ -1142,13 +1158,25 @@ Best regards,
       const styleValue = field.label_style || "";
       $labelStyle.append(
         '<select id="field-label-style" class="regular-text">' +
-          '<option value=""' + (styleValue === "" ? " selected" : "") + '>Default</option>' +
-          '<option value="center"' + (styleValue === "center" ? " selected" : "") + '>Centered</option>' +
-          '<option value="large"' + (styleValue === "large" ? " selected" : "") + '>Large Text</option>' +
-          '<option value="small"' + (styleValue === "small" ? " selected" : "") + '>Small Text</option>' +
-          '<option value="bold"' + (styleValue === "bold" ? " selected" : "") + '>Bold</option>' +
-          '<option value="muted"' + (styleValue === "muted" ? " selected" : "") + '>Muted</option>' +
-          '</select>'
+          '<option value=""' +
+          (styleValue === "" ? " selected" : "") +
+          ">Default</option>" +
+          '<option value="center"' +
+          (styleValue === "center" ? " selected" : "") +
+          ">Centered</option>" +
+          '<option value="large"' +
+          (styleValue === "large" ? " selected" : "") +
+          ">Large Text</option>" +
+          '<option value="small"' +
+          (styleValue === "small" ? " selected" : "") +
+          ">Small Text</option>" +
+          '<option value="bold"' +
+          (styleValue === "bold" ? " selected" : "") +
+          ">Bold</option>" +
+          '<option value="muted"' +
+          (styleValue === "muted" ? " selected" : "") +
+          ">Muted</option>" +
+          "</select>"
       );
       $props.append($labelStyle);
       $("#field-label-style")
