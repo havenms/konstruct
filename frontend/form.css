@@ -551,6 +551,39 @@
   }
 }
 
+/* Label Field Styles */
+.form-builder-field-label {
+  margin-bottom: var(--spacing-lg);
+}
+
+.form-builder-label-field {
+  color: var(--color-text);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.form-builder-label-field.form-builder-label-center {
+  text-align: center;
+}
+
+.form-builder-label-field.form-builder-label-large {
+  font-size: 1.5em;
+  font-weight: 600;
+}
+
+.form-builder-label-field.form-builder-label-small {
+  font-size: 0.875em;
+}
+
+.form-builder-label-field.form-builder-label-bold {
+  font-weight: 700;
+}
+
+.form-builder-label-field.form-builder-label-muted {
+  color: var(--color-text-light);
+  font-weight: 400;
+}
+
 /* Print Styles */
 @media print {
   .form-builder-navigation,

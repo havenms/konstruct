@@ -129,6 +129,7 @@ Best regards,
      */
     public function get_field_types() {
         return array(
+            'label' => 'Label/Heading',
             'text' => 'Text Input',
             'email' => 'Email',
             'tel' => 'Phone',

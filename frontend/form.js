@@ -110,11 +110,12 @@
   FormBuilderInstance.prototype.handleFieldChange = function (e) {
     const field = e.target;
 
-    // Skip link fields (they're not form inputs)
+    // Skip link and label fields (they're not form inputs)
     const fieldContainer = field.closest(".form-builder-field");
     if (
       fieldContainer &&
-      fieldContainer.classList.contains("form-builder-field-link")
+      (fieldContainer.classList.contains("form-builder-field-link") ||
+       fieldContainer.classList.contains("form-builder-field-label"))
     ) {
       return;
     }
@@ -191,6 +192,11 @@
 
     currentPageConfig.fields.forEach(
       function (field) {
+        // Skip label fields - they're informational only
+        if (field.type === "label") {
+          return;
+        }
+        
         let fieldElement = this.formElement.querySelector(
           '[name="' + field.name + '"]'
         );

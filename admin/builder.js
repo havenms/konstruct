@@ -952,22 +952,24 @@ Best regards,
         }
       });
 
-    // Field Name (for form submission key)
-    const $name = $('<div class="property-item">');
-    $name.append(
-      '<label>Field Name <span style="font-size: 12px; color: #666;">(for submissions)</span></label>'
-    );
-    $name.append(
-      '<input type="text" id="field-name" class="regular-text" value="' +
-        escapeHtml(field.name || "") +
-        '" placeholder="auto-generated if empty">'
-    );
-    $props.append($name);
-    $("#field-name")
-      .off("input")
-      .on("input", function () {
-        field.name = $(this).val();
-      });
+    // Field Name (for form submission key) - skip for label fields
+    if (field.type !== "label") {
+      const $name = $('<div class="property-item">');
+      $name.append(
+        '<label>Field Name <span style="font-size: 12px; color: #666;">(for submissions)</span></label>'
+      );
+      $name.append(
+        '<input type="text" id="field-name" class="regular-text" value="' +
+          escapeHtml(field.name || "") +
+          '" placeholder="auto-generated if empty">'
+      );
+      $props.append($name);
+      $("#field-name")
+        .off("input")
+        .on("input", function () {
+          field.name = $(this).val();
+        });
+    }
 
     // Type (read-only)
     const $type = $('<div class="property-item">');
@@ -979,34 +981,38 @@ Best regards,
     );
     $props.append($type);
 
-    // Required checkbox
-    const $required = $('<div class="property-item">');
-    $required.append(
-      '<label><input type="checkbox" id="field-required" ' +
-        (field.required ? "checked" : "") +
-        "> Required</label>"
-    );
-    $props.append($required);
-    $("#field-required")
-      .off("change")
-      .on("change", function () {
-        field.required = $(this).is(":checked");
-      });
+    // Required checkbox - skip for label fields
+    if (field.type !== "label") {
+      const $required = $('<div class="property-item">');
+      $required.append(
+        '<label><input type="checkbox" id="field-required" ' +
+          (field.required ? "checked" : "") +
+          "> Required</label>"
+      );
+      $props.append($required);
+      $("#field-required")
+        .off("change")
+        .on("change", function () {
+          field.required = $(this).is(":checked");
+        });
+    }
 
-    // Placeholder
-    const $placeholder = $('<div class="property-item">');
-    $placeholder.append("<label>Placeholder Text</label>");
-    $placeholder.append(
-      '<input type="text" id="field-placeholder" class="regular-text" value="' +
-        escapeHtml(field.placeholder || "") +
-        '">'
-    );
-    $props.append($placeholder);
-    $("#field-placeholder")
-      .off("input")
-      .on("input", function () {
-        field.placeholder = $(this).val();
-      });
+    // Placeholder - skip for label fields
+    if (field.type !== "label") {
+      const $placeholder = $('<div class="property-item">');
+      $placeholder.append("<label>Placeholder Text</label>");
+      $placeholder.append(
+        '<input type="text" id="field-placeholder" class="regular-text" value="' +
+          escapeHtml(field.placeholder || "") +
+          '">'
+      );
+      $props.append($placeholder);
+      $("#field-placeholder")
+        .off("input")
+        .on("input", function () {
+          field.placeholder = $(this).val();
+        });
+    }
 
     // Options (for select, radio, checkbox)
     if (["select", "radio", "checkbox"].includes(field.type)) {
@@ -1105,6 +1111,53 @@ Best regards,
         });
     }
 
+    // Label field specific properties
+    if (field.type === "label") {
+      // HTML Tag
+      const $tag = $('<div class="property-item">');
+      $tag.append("<label>HTML Tag</label>");
+      const tagValue = field.label_tag || "h3";
+      $tag.append(
+        '<select id="field-label-tag" class="regular-text">' +
+          '<option value="h1"' + (tagValue === "h1" ? " selected" : "") + '>Heading 1 (h1)</option>' +
+          '<option value="h2"' + (tagValue === "h2" ? " selected" : "") + '>Heading 2 (h2)</option>' +
+          '<option value="h3"' + (tagValue === "h3" ? " selected" : "") + '>Heading 3 (h3)</option>' +
+          '<option value="h4"' + (tagValue === "h4" ? " selected" : "") + '>Heading 4 (h4)</option>' +
+          '<option value="h5"' + (tagValue === "h5" ? " selected" : "") + '>Heading 5 (h5)</option>' +
+          '<option value="h6"' + (tagValue === "h6" ? " selected" : "") + '>Heading 6 (h6)</option>' +
+          '<option value="p"' + (tagValue === "p" ? " selected" : "") + '>Paragraph (p)</option>' +
+          '<option value="div"' + (tagValue === "div" ? " selected" : "") + '>Division (div)</option>' +
+          '</select>'
+      );
+      $props.append($tag);
+      $("#field-label-tag")
+        .off("change")
+        .on("change", function () {
+          field.label_tag = $(this).val();
+        });
+
+      // Style
+      const $labelStyle = $('<div class="property-item">');
+      $labelStyle.append("<label>Style</label>");
+      const styleValue = field.label_style || "";
+      $labelStyle.append(
+        '<select id="field-label-style" class="regular-text">' +
+          '<option value=""' + (styleValue === "" ? " selected" : "") + '>Default</option>' +
+          '<option value="center"' + (styleValue === "center" ? " selected" : "") + '>Centered</option>' +
+          '<option value="large"' + (styleValue === "large" ? " selected" : "") + '>Large Text</option>' +
+          '<option value="small"' + (styleValue === "small" ? " selected" : "") + '>Small Text</option>' +
+          '<option value="bold"' + (styleValue === "bold" ? " selected" : "") + '>Bold</option>' +
+          '<option value="muted"' + (styleValue === "muted" ? " selected" : "") + '>Muted</option>' +
+          '</select>'
+      );
+      $props.append($labelStyle);
+      $("#field-label-style")
+        .off("change")
+        .on("change", function () {
+          field.label_style = $(this).val();
+        });
+    }
+
     // Helper text
     const $helper = $(
       '<p class="property-helper">💡 Changes to label and options update immediately. Click Save Form to persist changes.</p>'
@@ -1131,6 +1184,13 @@ Best regards,
           ? ["Option 1", "Option 2", "Option 3"]
           : [],
     };
+
+    // Add label-specific defaults
+    if (type === "label") {
+      field.label = "Enter your heading text here";
+      field.label_tag = "h3";
+      field.label_style = "";
+    }
 
     // Add link-specific defaults
     if (type === "link") {

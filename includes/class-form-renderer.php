@@ -117,6 +117,16 @@ class Form_Builder_Renderer {
         $required = isset($field['required']) && $field['required'] ? 'required' : '';
         $placeholder = isset($field['placeholder']) ? esc_attr($field['placeholder']) : '';
         
+        // Handle label field type differently - no form field wrapper needed
+        if ($field_type === 'label') {
+            ?>
+            <div class="form-builder-field form-builder-field-label" data-field-id="<?php echo esc_attr($field_id); ?>">
+                <?php $this->render_label($field_id, $field); ?>
+            </div>
+            <?php
+            return;
+        }
+        
         ?>
         <div class="form-builder-field form-builder-field-<?php echo esc_attr($field_type); ?>" data-field-id="<?php echo esc_attr($field_id); ?>">
             <label for="<?php echo esc_attr($field_id); ?>">
@@ -128,6 +138,7 @@ class Form_Builder_Renderer {
             
             <?php
             switch ($field_type) {
+                
                 case 'textarea':
                     $this->render_textarea($field_id, $field_name, $required, $placeholder);
                     break;
@@ -310,6 +321,28 @@ class Form_Builder_Renderer {
             class="form-builder-file"
             <?php echo $required ? 'required' : ''; ?>
         />
+        <?php
+    }
+    
+    /**
+     * Render label/heading field
+     */
+    private function render_label($id, $field) {
+        $text = isset($field['label']) ? esc_html($field['label']) : '';
+        $tag = isset($field['label_tag']) ? esc_attr($field['label_tag']) : 'h3';
+        $style = isset($field['label_style']) ? esc_attr($field['label_style']) : '';
+        
+        if (empty($text)) {
+            return;
+        }
+        
+        ?>
+        <<?php echo $tag; ?> 
+            class="form-builder-label-field <?php echo $style ? 'form-builder-label-' . $style : ''; ?>"
+            id="<?php echo esc_attr($id); ?>"
+        >
+            <?php echo $text; ?>
+        </<?php echo $tag; ?>>
         <?php
     }
     
