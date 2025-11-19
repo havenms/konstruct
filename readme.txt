@@ -1,5 +1,5 @@
 === Konstruct Form Builder ===
-Contributors: your-username
+Contributors: havenmediasolutions
 Tags: forms, form-builder, contact-form, survey, webhook, paginated-forms
 Requires at least: 5.0
 Tested up to: 6.4
