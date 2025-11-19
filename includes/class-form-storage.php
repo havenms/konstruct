@@ -278,13 +278,17 @@ class Form_Builder_Storage {
         $counter = 1;
         
         while (true) {
-            $query = $wpdb->prepare(
-                "SELECT id FROM {$this->forms_table} WHERE form_slug = %s",
-                $slug
-            );
-            
             if ($exclude_id) {
-                $query .= $wpdb->prepare(" AND id != %d", $exclude_id);
+                $query = $wpdb->prepare(
+                    "SELECT id FROM {$this->forms_table} WHERE form_slug = %s AND id != %d",
+                    $slug,
+                    $exclude_id
+                );
+            } else {
+                $query = $wpdb->prepare(
+                    "SELECT id FROM {$this->forms_table} WHERE form_slug = %s",
+                    $slug
+                );
             }
             
             $existing = $wpdb->get_var($query);

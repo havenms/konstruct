@@ -48,13 +48,13 @@ class Form_Builder_Renderer {
                 
                 <div class="form-builder-navigation">
                     <button type="button" class="form-builder-btn form-builder-btn-back" style="display: none;">
-                        <?php _e('Back', 'form-builder-microsaas'); ?>
+                        <?php esc_html_e('Back', 'form-builder-microsaas'); ?>
                     </button>
                     <button type="button" class="form-builder-btn form-builder-btn-next">
-                        <?php _e('Next', 'form-builder-microsaas'); ?>
+                        <?php esc_html_e('Next', 'form-builder-microsaas'); ?>
                     </button>
                     <button type="submit" class="form-builder-btn form-builder-btn-submit" style="display: none;">
-                        <?php _e('Submit', 'form-builder-microsaas'); ?>
+                        <?php esc_html_e('Submit', 'form-builder-microsaas'); ?>
                     </button>
                 </div>
                 
@@ -66,8 +66,8 @@ class Form_Builder_Renderer {
             </form>
             
             <div class="form-builder-success" style="display: none;">
-                <h3><?php _e('Form Submitted Successfully!', 'form-builder-microsaas'); ?></h3>
-                <p><?php _e('Thank you for your submission.', 'form-builder-microsaas'); ?></p>
+                <h3><?php esc_html_e('Form Submitted Successfully!', 'form-builder-microsaas'); ?></h3>
+                <p><?php esc_html_e('Thank you for your submission.', 'form-builder-microsaas'); ?></p>
             </div>
         </div>
         <?php
@@ -130,7 +130,7 @@ class Form_Builder_Renderer {
         ?>
         <div class="form-builder-field form-builder-field-<?php echo esc_attr($field_type); ?>" data-field-id="<?php echo esc_attr($field_id); ?>">
             <label for="<?php echo esc_attr($field_id); ?>">
-                <?php echo $field_label; ?>
+                <?php echo esc_html($field_label); ?>
                 <?php if ($required): ?>
                     <span class="form-builder-required">*</span>
                 <?php endif; ?>
@@ -256,7 +256,7 @@ class Form_Builder_Renderer {
             class="form-builder-select"
             <?php echo $required ? 'required' : ''; ?>
         >
-            <option value=""><?php _e('Select...', 'form-builder-microsaas'); ?></option>
+            <option value=""><?php esc_html_e('Select...', 'form-builder-microsaas'); ?></option>
             <?php foreach ($options as $option): ?>
                 <option value="<?php echo esc_attr($option); ?>"><?php echo esc_html($option); ?></option>
             <?php endforeach; ?>
@@ -337,12 +337,12 @@ class Form_Builder_Renderer {
         }
         
         ?>
-        <<?php echo $tag; ?> 
-            class="form-builder-label-field <?php echo $style ? 'form-builder-label-' . $style : ''; ?>"
+        <<?php echo esc_attr($tag); ?> 
+            class="form-builder-label-field <?php echo $style ? 'form-builder-label-' . esc_attr($style) : ''; ?>"
             id="<?php echo esc_attr($id); ?>"
         >
-            <?php echo $text; ?>
-        </<?php echo $tag; ?>>
+            <?php echo esc_html($text); ?>
+        </<?php echo esc_attr($tag); ?>>
         <?php
     }
     
@@ -357,15 +357,15 @@ class Form_Builder_Renderer {
         
         ?>
         <a 
-            href="<?php echo $url; ?>" 
+            href="<?php echo esc_url($url); ?>" 
             target="<?php echo esc_attr($target); ?>"
-            class="form-builder-link-button form-builder-link-<?php echo $button_style; ?>"
+            class="form-builder-link-button form-builder-link-<?php echo esc_attr($button_style); ?>"
             id="<?php echo esc_attr($id); ?>"
             <?php if ($target === '_blank'): ?>
                 rel="noopener noreferrer"
             <?php endif; ?>
         >
-            <?php echo $button_text; ?>
+            <?php echo esc_html($button_text); ?>
         </a>
         <?php
     }
@@ -413,14 +413,14 @@ class Form_Builder_Renderer {
     private function generate_uuid() {
         return sprintf(
             '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0x0fff) | 0x4000,
-            mt_rand(0, 0x3fff) | 0x8000,
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff)
+            wp_rand(0, 0xffff),
+            wp_rand(0, 0xffff),
+            wp_rand(0, 0xffff),
+            wp_rand(0, 0x0fff) | 0x4000,
+            wp_rand(0, 0x3fff) | 0x8000,
+            wp_rand(0, 0xffff),
+            wp_rand(0, 0xffff),
+            wp_rand(0, 0xffff)
         );
     }
 }

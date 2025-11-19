@@ -20,8 +20,11 @@ $forms_table = $wpdb->prefix . 'form_builder_forms';
 $submissions_table = $wpdb->prefix . 'form_builder_submissions';
 $logs_table = $wpdb->prefix . 'form_builder_webhook_logs';
 
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
 $wpdb->query("DROP TABLE IF EXISTS {$forms_table}");
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
 $wpdb->query("DROP TABLE IF EXISTS {$submissions_table}");
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
 $wpdb->query("DROP TABLE IF EXISTS {$logs_table}");
 
 // Remove plugin options
@@ -36,11 +39,13 @@ if (file_exists($form_data_dir) && is_dir($form_data_dir)) {
     $files = glob(trailingslashit($form_data_dir) . '*');
     foreach ($files as $file) {
         if (is_file($file)) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
             @unlink($file);
         }
     }
     
     // Remove the directory itself
+    // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
     @rmdir($form_data_dir);
 }
 
