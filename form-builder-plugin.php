@@ -6,14 +6,12 @@
  * Version: 1.2.0
  * Requires at least: 5.0
  * Requires PHP: 7.4
- * Tested up to: 6.4
+ * Tested up to: 6.8
  * Author: Haven Media Solutions
  * Author URI: https://profiles.wordpress.org/havenmediasolutions
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: form-builder-microsaas
- * Network: false
- * Update URI: false
  */
 
 // Prevent direct access
@@ -669,6 +667,7 @@ class Form_Builder_Microsaas {
         header('Content-Type: ' . $mime);
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('Content-Length: ' . filesize($real));
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile
         readfile($real);
         exit;
     }
@@ -728,6 +727,7 @@ class Form_Builder_Microsaas {
             $unique = $submission_uuid . '-' . wp_generate_password(8, false, false) . '-' . $safe_name;
             $dest = trailingslashit($target_dir) . $unique;
 
+            // phpcs:ignore Generic.PHP.ForbiddenFunctions.Found
             if (!@move_uploaded_file($file['tmp_name'], $dest)) {
                 // Fallback to WP handle upload
                 $overrides = array('test_form' => false);
@@ -736,6 +736,7 @@ class Form_Builder_Microsaas {
                     return new WP_Error('upload_move_failed', $handled['error'], array('status' => 500));
                 }
                 // Move from default uploads to our protected dir
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
                 $moved = @rename($handled['file'], $dest);
                 if (!$moved) {
                     return new WP_Error('upload_move_failed', 'Could not secure file location', array('status' => 500));
@@ -982,14 +983,14 @@ class Form_Builder_Microsaas {
     private function generate_uuid() {
         return sprintf(
             '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0x0fff) | 0x4000,
-            mt_rand(0, 0x3fff) | 0x8000,
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff),
-            mt_rand(0, 0xffff)
+            wp_rand(0, 0xffff),
+            wp_rand(0, 0xffff),
+            wp_rand(0, 0xffff),
+            wp_rand(0, 0x0fff) | 0x4000,
+            wp_rand(0, 0x3fff) | 0x8000,
+            wp_rand(0, 0xffff),
+            wp_rand(0, 0xffff),
+            wp_rand(0, 0xffff)
         );
     }
 
@@ -1059,7 +1060,7 @@ class Form_Builder_Microsaas {
         }
         
         // Set headers for file download
-        $filename = 'form-' . $export_data['form']['slug'] . '-' . date('Y-m-d') . '.json';
+        $filename = 'form-' . $export_data['form']['slug'] . '-' . gmdate('Y-m-d') . '.json';
         
         return new WP_REST_Response($export_data, 200, array(
             'Content-Type' => 'application/json',

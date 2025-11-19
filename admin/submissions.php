@@ -12,9 +12,9 @@ $storage = new Form_Builder_Storage();
 
 // Get filter parameters
 $form_id = isset($_GET['form_id']) ? intval($_GET['form_id']) : 0;
-$date_from = isset($_GET['date_from']) ? sanitize_text_field($_GET['date_from']) : '';
-$date_to = isset($_GET['date_to']) ? sanitize_text_field($_GET['date_to']) : '';
-$search = isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '';
+$date_from = isset($_GET['date_from']) ? sanitize_text_field(wp_unslash($_GET['date_from'])) : '';
+$date_to = isset($_GET['date_to']) ? sanitize_text_field(wp_unslash($_GET['date_to'])) : '';
+$search = isset($_GET['search']) ? sanitize_text_field(wp_unslash($_GET['search'])) : '';
 
 // Get all forms for filter dropdown
 $forms = $storage->get_all_forms();
@@ -61,6 +61,7 @@ $query .= " ORDER BY s.created_at DESC";
 
 // Get total count for pagination
 $count_query = str_replace("SELECT s.*, f.form_name, f.form_slug", "SELECT COUNT(*) as total", $query);
+// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 $total_submissions = $wpdb->get_var($wpdb->prepare($count_query, $where_values));
 
 // Pagination
@@ -72,6 +73,7 @@ $query .= " LIMIT %d OFFSET %d";
 $where_values[] = $per_page;
 $where_values[] = $offset;
 
+// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 $submissions = $wpdb->get_results($wpdb->prepare($query, $where_values), ARRAY_A);
 
 // Decode form data
@@ -86,7 +88,7 @@ $total_pages = ceil($total_submissions / $per_page);
 ?>
 
 <div class="wrap form-builder-admin">
-    <h1><?php _e('Konstruct Form Builder - Submissions', 'form-builder-microsaas'); ?></h1>
+    <h1><?php esc_html_e('Konstruct Form Builder - Submissions', 'form-builder-microsaas'); ?></h1>
 
     <!-- Filters -->
     <div class="form-builder-filters" style="background: #fff; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
@@ -127,10 +129,10 @@ $total_pages = ceil($total_submissions / $per_page);
 
                 <div style="display: flex; gap: 10px;">
                     <button type="submit" class="button button-primary" style="padding: 8px 16px;">
-                        <?php _e('Filter', 'form-builder-microsaas'); ?>
+                        <?php esc_html_e('Filter', 'form-builder-microsaas'); ?>
                     </button>
-                    <a href="<?php echo admin_url('admin.php?page=form-builder-submissions'); ?>" class="button" style="padding: 8px 16px;">
-                        <?php _e('Clear', 'form-builder-microsaas'); ?>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=form-builder-submissions')); ?>" class="button" style="padding: 8px 16px;">
+                        <?php esc_html_e('Clear', 'form-builder-microsaas'); ?>
                     </a>
                 </div>
             </div>
@@ -154,7 +156,7 @@ $total_pages = ceil($total_submissions / $per_page);
         $today_count = $wpdb->get_var($wpdb->prepare("
             SELECT COUNT(*) FROM {$wpdb->prefix}form_builder_submissions
             WHERE DATE(created_at) = %s
-        ", date('Y-m-d')));
+        ", gmdate('Y-m-d')));
         ?>
         <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 20px; border-radius: 8px; text-align: center;">
             <h3 style="margin: 0 0 10px 0; font-size: 2em;"><?php echo number_format($today_count); ?></h3>
@@ -230,8 +232,8 @@ $total_pages = ceil($total_submissions / $per_page);
                                 <?php endif; ?>
                             </td>
                             <td style="padding: 15px;">
-                                <div style="font-size: 0.9em; color: #374151;"><?php echo esc_html(date('M j, Y', strtotime($submission['created_at']))); ?></div>
-                                <div style="font-size: 0.8em; color: #6b7280;"><?php echo esc_html(date('g:i A', strtotime($submission['created_at']))); ?></div>
+                                <div style="font-size: 0.9em; color: #374151;"><?php echo esc_html(gmdate('M j, Y', strtotime($submission['created_at']))); ?></div>
+                                <div style="font-size: 0.8em; color: #6b7280;"><?php echo esc_html(gmdate('g:i A', strtotime($submission['created_at']))); ?></div>
                             </td>
                             <td style="padding: 15px;">
                                 <button type="button" class="button button-small view-submission"
@@ -259,7 +261,7 @@ $total_pages = ceil($total_submissions / $per_page);
                 'search' => $search,
             ), admin_url('admin.php'));
 
-            echo paginate_links(array(
+            echo wp_kses_post(paginate_links(array(
                 'base' => $base_url . '%_%',
                 'format' => '&paged=%#%',
                 'current' => $current_page,

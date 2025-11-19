@@ -13,7 +13,7 @@ $builder = new Form_Builder_Builder();
 
 // Get form ID from URL
 $form_id = isset($_GET['form_id']) ? intval($_GET['form_id']) : 0;
-$action = isset($_GET['action']) ? sanitize_text_field($_GET['action']) : 'list';
+$action = isset($_GET['action']) ? sanitize_text_field(wp_unslash($_GET['action'])) : 'list';
 
 // If page is form-builder-new, set action to new
 if (isset($_GET['page']) && $_GET['page'] === 'form-builder-new') {
@@ -27,7 +27,7 @@ if ($form_id && $action === 'edit') {
 
 // If editing but form not found, redirect to list
 if ($form_id && $action === 'edit' && !$form) {
-    wp_redirect(admin_url('admin.php?page=form-builder'));
+    wp_safe_redirect(admin_url('admin.php?page=form-builder'));
     exit;
 }
 
@@ -56,17 +56,17 @@ $field_types = $builder->get_field_types();
         }
     </script>
     
-    <h1><?php echo $action === 'edit' ? __('Edit Form', 'form-builder-microsaas') : ($action === 'new' ? __('Add New Form', 'form-builder-microsaas') : __('Konstruct Form Builder', 'form-builder-microsaas')); ?></h1>
+    <h1><?php echo $action === 'edit' ? esc_html__('Edit Form', 'form-builder-microsaas') : ($action === 'new' ? esc_html__('Add New Form', 'form-builder-microsaas') : esc_html__('Konstruct Form Builder', 'form-builder-microsaas')); ?></h1>
     
     <?php if ($action === 'list'): ?>
         <!-- Forms List -->
         <div class="form-builder-list">
             <div class="form-builder-list-actions">
-                <a href="<?php echo admin_url('admin.php?page=form-builder-new'); ?>" class="button button-primary">
-                    <?php _e('Add New Form', 'form-builder-microsaas'); ?>
+                <a href="<?php echo esc_url(admin_url('admin.php?page=form-builder-new')); ?>" class="button button-primary">
+                    <?php esc_html_e('Add New Form', 'form-builder-microsaas'); ?>
                 </a>
                 <button type="button" id="import-form-btn" class="button button-secondary">
-                    <?php _e('Import Form', 'form-builder-microsaas'); ?>
+                    <?php esc_html_e('Import Form', 'form-builder-microsaas'); ?>
                 </button>
             </div>
             
@@ -74,20 +74,20 @@ $field_types = $builder->get_field_types();
             <div id="import-form-modal" class="form-builder-modal" style="display: none;">
                 <div class="form-builder-modal-content">
                     <div class="form-builder-modal-header">
-                        <h3><?php _e('Import Form', 'form-builder-microsaas'); ?></h3>
+                        <h3><?php esc_html_e('Import Form', 'form-builder-microsaas'); ?></h3>
                         <button type="button" class="form-builder-modal-close">&times;</button>
                     </div>
                     <div class="form-builder-modal-body">
-                        <p><?php _e('Select a JSON file exported from Form Builder to import:', 'form-builder-microsaas'); ?></p>
+                        <p><?php esc_html_e('Select a JSON file exported from Form Builder to import:', 'form-builder-microsaas'); ?></p>
                         <input type="file" id="import-file-input" accept=".json" />
                         <div id="import-status" class="form-builder-import-status"></div>
                     </div>
                     <div class="form-builder-modal-footer">
                         <button type="button" id="import-form-submit" class="button button-primary" disabled>
-                            <?php _e('Import', 'form-builder-microsaas'); ?>
+                            <?php esc_html_e('Import', 'form-builder-microsaas'); ?>
                         </button>
                         <button type="button" class="button form-builder-modal-close">
-                            <?php _e('Cancel', 'form-builder-microsaas'); ?>
+                            <?php esc_html_e('Cancel', 'form-builder-microsaas'); ?>
                         </button>
                     </div>
                 </div>
@@ -96,11 +96,11 @@ $field_types = $builder->get_field_types();
             <table class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
-                        <th><?php _e('Form Name', 'form-builder-microsaas'); ?></th>
-                        <th><?php _e('Slug', 'form-builder-microsaas'); ?></th>
-                        <th><?php _e('Pages', 'form-builder-microsaas'); ?></th>
-                        <th><?php _e('Updated', 'form-builder-microsaas'); ?></th>
-                        <th><?php _e('Actions', 'form-builder-microsaas'); ?></th>
+                        <th><?php esc_html_e('Form Name', 'form-builder-microsaas'); ?></th>
+                        <th><?php esc_html_e('Slug', 'form-builder-microsaas'); ?></th>
+                        <th><?php esc_html_e('Pages', 'form-builder-microsaas'); ?></th>
+                        <th><?php esc_html_e('Updated', 'form-builder-microsaas'); ?></th>
+                        <th><?php esc_html_e('Actions', 'form-builder-microsaas'); ?></th>
                     </tr>
                 </thead>
                 <tbody id="forms-list">
@@ -117,17 +117,17 @@ $field_types = $builder->get_field_types();
                 <div class="form-builder-actions">
                     <?php if ($form && $form_id): ?>
                         <button type="button" id="copy-shortcode" class="button button-secondary copy-shortcode-btn" data-form-id="<?php echo esc_attr($form_id); ?>">
-                            <?php _e('Copy Shortcode', 'form-builder-microsaas'); ?>
+                            <?php esc_html_e('Copy Shortcode', 'form-builder-microsaas'); ?>
                         </button>
                     <?php endif; ?>
-                    <button type="button" id="save-form" class="button button-primary"><?php _e('Save Form', 'form-builder-microsaas'); ?></button>
-                    <a href="<?php echo admin_url('admin.php?page=form-builder'); ?>" class="button"><?php _e('Cancel', 'form-builder-microsaas'); ?></a>
+                    <button type="button" id="save-form" class="button button-primary"><?php esc_html_e('Save Form', 'form-builder-microsaas'); ?></button>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=form-builder')); ?>" class="button"><?php esc_html_e('Cancel', 'form-builder-microsaas'); ?></a>
                 </div>
             </div>
             
             <div class="form-builder-content">
                 <div class="form-builder-sidebar">
-                    <h3><?php _e('Field Types', 'form-builder-microsaas'); ?></h3>
+                    <h3><?php esc_html_e('Field Types', 'form-builder-microsaas'); ?></h3>
                     <div class="field-types-list">
                         <?php foreach ($field_types as $type => $label): ?>
                             <button type="button" class="field-type-btn" data-type="<?php echo esc_attr($type); ?>">
@@ -136,9 +136,9 @@ $field_types = $builder->get_field_types();
                         <?php endforeach; ?>
                     </div>
                     
-                    <h3><?php _e('Pages', 'form-builder-microsaas'); ?></h3>
+                    <h3><?php esc_html_e('Pages', 'form-builder-microsaas'); ?></h3>
                     <div id="pages-list"></div>
-                    <button type="button" id="add-page" class="button"><?php _e('Add Page', 'form-builder-microsaas'); ?></button>
+                    <button type="button" id="add-page" class="button"><?php esc_html_e('Add Page', 'form-builder-microsaas'); ?></button>
                 </div>
                 
                 <div class="form-builder-main">
@@ -146,7 +146,7 @@ $field_types = $builder->get_field_types();
                 </div>
                 
                 <div class="form-builder-properties">
-                    <h3><?php _e('Page Settings', 'form-builder-microsaas'); ?></h3>
+                    <h3><?php esc_html_e('Page Settings', 'form-builder-microsaas'); ?></h3>
                     <div id="page-properties"></div>
                 </div>
             </div>
