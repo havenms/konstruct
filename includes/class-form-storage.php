@@ -75,10 +75,6 @@ class Form_Builder_Storage {
             );
 
             if ($result === false) {
-                // Add diagnostic logging to help identify root cause in production
-                if (defined('WP_DEBUG') && WP_DEBUG) {
-                    error_log('[Form_Builder_Storage] Update failed for ID ' . $form_id . ' - ' . $wpdb->last_error);
-                }
                 return new WP_Error('update_failed', 'Failed to update form');
             }
 
@@ -165,6 +161,7 @@ class Form_Builder_Storage {
             $form['form_config'] = json_decode($form['form_config'], true);
         }
         
+        // Note: This query doesn't use user input, so it's safe without prepare()
         $total = $wpdb->get_var("SELECT COUNT(*) FROM {$this->forms_table}");
         
         return array(

@@ -176,7 +176,6 @@
       value = field.value;
     }
 
-    console.log("Field change - name:", fieldName, "value:", value);
     this.formData[fieldName] = value;
     this.saveData();
   };
@@ -579,12 +578,9 @@
       })
       .then(function (data) {
         if (data.success) {
-          console.log("Step notification sent successfully");
           if (data.submission_uuid) {
             self.submissionUuid = data.submission_uuid;
           }
-        } else {
-          console.log("Step notification failed:", data);
         }
       })
       .catch(function (error) {

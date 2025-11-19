@@ -1,13 +1,19 @@
 <?php
 /**
  * Plugin Name: Konstruct Form Builder
- * Plugin URI: https://example.com/form-builder
+ * Plugin URI: https://wordpress.org/plugins/konstruct-form-builder
  * Description: A standalone form builder tool that creates paginated forms with configurable per-page webhooks. All data stored in WordPress database.
  * Version: 1.2.0
+ * Requires at least: 5.0
+ * Requires PHP: 7.4
+ * Tested up to: 6.4
  * Author: Your Name
+ * Author URI: https://profiles.wordpress.org/your-username
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: form-builder-microsaas
+ * Network: false
+ * Update URI: false
  */
 
 // Prevent direct access
@@ -25,11 +31,26 @@ define('FORM_BUILDER_DEV_MODE', defined('WP_DEBUG') && WP_DEBUG);
 
 /**
  * Main Plugin Class
+ * 
+ * Handles plugin initialization, activation, deactivation, and core functionality.
+ * 
+ * @package Form_Builder_Microsaas
+ * @since 1.2.0
  */
 class Form_Builder_Microsaas {
     
+    /**
+     * Plugin instance
+     * 
+     * @var Form_Builder_Microsaas
+     */
     private static $instance = null;
     
+    /**
+     * Get plugin instance
+     * 
+     * @return Form_Builder_Microsaas Plugin instance
+     */
     public static function get_instance() {
         if (null === self::$instance) {
             self::$instance = new self();
@@ -37,12 +58,21 @@ class Form_Builder_Microsaas {
         return self::$instance;
     }
     
+    /**
+     * Constructor
+     * 
+     * @access private
+     */
     private function __construct() {
         $this->init();
     }
     
     /**
      * Initialize the plugin
+     * 
+     * Sets up hooks, loads dependencies, and registers components.
+     * 
+     * @return void
      */
     private function init() {
         // Activation and deactivation hooks
@@ -78,6 +108,10 @@ class Form_Builder_Microsaas {
     
     /**
      * Load required dependencies
+     * 
+     * Includes all necessary class files for the plugin.
+     * 
+     * @return void
      */
     private function load_dependencies() {
         require_once FORM_BUILDER_PLUGIN_DIR . 'includes/class-form-storage.php';
@@ -89,6 +123,10 @@ class Form_Builder_Microsaas {
     
     /**
      * Load plugin components
+     * 
+     * Placeholder for component initialization.
+     * 
+     * @return void
      */
     public function load_components() {
         // Components will be initialized as needed
@@ -96,6 +134,10 @@ class Form_Builder_Microsaas {
     
     /**
      * Plugin activation hook
+     * 
+     * Creates database tables and sets up initial plugin data.
+     * 
+     * @return void
      */
     public function activate() {
         global $wpdb;
@@ -176,6 +218,10 @@ class Form_Builder_Microsaas {
     
     /**
      * Plugin deactivation hook
+     * 
+     * Performs cleanup tasks when plugin is deactivated.
+     * 
+     * @return void
      */
     public function deactivate() {
         // Cleanup if needed
@@ -184,6 +230,10 @@ class Form_Builder_Microsaas {
     
     /**
      * Add admin menu
+     * 
+     * Registers admin menu pages for the plugin.
+     * 
+     * @return void
      */
     public function add_admin_menu() {
         add_menu_page(
@@ -226,6 +276,10 @@ class Form_Builder_Microsaas {
     
     /**
      * Render builder admin page
+     * 
+     * Outputs the form builder interface.
+     * 
+     * @return void
      */
     public function render_builder_page() {
         // Add cache-busting headers for admin pages to help with LiteSpeed Cache
@@ -241,6 +295,10 @@ class Form_Builder_Microsaas {
 
     /**
      * Render submissions admin page
+     * 
+     * Outputs the submissions management interface.
+     * 
+     * @return void
      */
     public function render_submissions_page() {
         // Add cache-busting headers for admin pages to help with LiteSpeed Cache
@@ -256,6 +314,10 @@ class Form_Builder_Microsaas {
     
     /**
      * Register REST API routes
+     * 
+     * Registers all REST API endpoints for the plugin.
+     * 
+     * @return void
      */
     public function register_rest_routes() {
         register_rest_route('form-builder/v1', '/webhook', array(
@@ -350,6 +412,10 @@ class Form_Builder_Microsaas {
     
     /**
      * Check admin permission
+     * 
+     * Verifies that the current user has admin capabilities.
+     * 
+     * @return bool True if user has manage_options capability
      */
     public function check_admin_permission() {
         return current_user_can('manage_options');
@@ -357,6 +423,11 @@ class Form_Builder_Microsaas {
     
     /**
      * Handle webhook request
+     * 
+     * Processes webhook requests from the REST API.
+     * 
+     * @param WP_REST_Request $request REST API request object
+     * @return WP_REST_Response|WP_Error Response object
      */
     public function handle_webhook_request($request) {
         $webhook_handler = new Form_Builder_Webhook_Handler();
@@ -365,6 +436,11 @@ class Form_Builder_Microsaas {
     
     /**
      * Get all forms
+     * 
+     * Retrieves all forms from the database.
+     * 
+     * @param WP_REST_Request $request REST API request object
+     * @return WP_REST_Response Response containing forms data
      */
     public function get_forms($request) {
         $storage = new Form_Builder_Storage();
@@ -374,12 +450,14 @@ class Form_Builder_Microsaas {
     
     /**
      * Save form
+     * 
+     * Creates or updates a form in the database.
+     * 
+     * @param WP_REST_Request $request REST API request object
+     * @return WP_REST_Response|WP_Error Response object or error
      */
     public function save_form($request) {
         $data = $request->get_json_params();
-
-        // Debug logging
-        error_log('Form save request received: ' . json_encode($data));
 
         // Verify nonce
         if (!isset($data['nonce']) || !wp_verify_nonce($data['nonce'], 'form_builder_save')) {
@@ -398,6 +476,11 @@ class Form_Builder_Microsaas {
     
     /**
      * Get single form
+     * 
+     * Retrieves a single form by ID.
+     * 
+     * @param WP_REST_Request $request REST API request object
+     * @return WP_REST_Response|WP_Error Response object or error
      */
     public function get_form($request) {
         $id = $request->get_param('id');
@@ -413,6 +496,11 @@ class Form_Builder_Microsaas {
     
     /**
      * Delete form
+     * 
+     * Deletes a form from the database.
+     * 
+     * @param WP_REST_Request $request REST API request object
+     * @return WP_REST_Response|WP_Error Response object or error
      */
     public function delete_form($request) {
         $id = $request->get_param('id');
@@ -428,6 +516,11 @@ class Form_Builder_Microsaas {
 
     /**
      * Save submission
+     * 
+     * Saves a form submission to the database.
+     * 
+     * @param WP_REST_Request $request REST API request object
+     * @return WP_REST_Response|WP_Error Response object or error
      */
     public function save_submission($request) {
         // Support multipart (files) and JSON bodies
@@ -459,8 +552,6 @@ class Form_Builder_Microsaas {
             }
         } else {
             $params = $request->get_json_params();
-            // Debug logging
-            error_log('Submission save request received: ' . json_encode($params));
             if (empty($params['form_id']) || !isset($params['formData'])) {
                 return new WP_Error(
                     'missing_params',
@@ -531,6 +622,11 @@ class Form_Builder_Microsaas {
 
     /**
      * Protected download
+     * 
+     * Handles secure file downloads for form submissions.
+     * 
+     * @param WP_REST_Request $request REST API request object
+     * @return void|WP_Error Exits on success or returns error
      */
     public function download_file($request) {
         $submission_uuid = sanitize_text_field($request->get_param('submission_uuid'));
@@ -579,6 +675,11 @@ class Form_Builder_Microsaas {
 
     /**
      * Process uploads: validate, move to uploads/form_data, and replace fields with metadata and protected URLs.
+     * 
+     * @param string $submission_uuid Unique submission identifier
+     * @param array  $form_data Form data array
+     * @param array  $files Uploaded files array
+     * @return array|WP_Error Enriched form data or error
      */
     private function process_uploads_and_enrich_form_data($submission_uuid, $form_data, $files) {
         $uploads = wp_upload_dir();
@@ -661,18 +762,25 @@ class Form_Builder_Microsaas {
 
     /**
      * Get submissions
+     * 
+     * Retrieves all form submissions from the database.
+     * 
+     * @param WP_REST_Request $request REST API request object
+     * @return WP_REST_Response Response containing submissions data
      */
     public function get_submissions($request) {
         $storage = new Form_Builder_Storage();
 
         // Get all submissions with form info
+        // Note: This query doesn't use user input, so it's safe without prepare()
         global $wpdb;
-        $submissions = $wpdb->get_results("
-            SELECT s.*, f.form_name, f.form_slug
+        $submissions = $wpdb->get_results(
+            "SELECT s.*, f.form_name, f.form_slug
             FROM {$wpdb->prefix}form_builder_submissions s
             LEFT JOIN {$wpdb->prefix}form_builder_forms f ON s.form_id = f.id
-            ORDER BY s.created_at DESC
-        ", ARRAY_A);
+            ORDER BY s.created_at DESC",
+            ARRAY_A
+        );
 
         // Decode form data
         foreach ($submissions as &$submission) {
@@ -686,6 +794,11 @@ class Form_Builder_Microsaas {
     
     /**
      * Render form shortcode
+     * 
+     * Handles the [form_builder] shortcode.
+     * 
+     * @param array $atts Shortcode attributes
+     * @return string Form HTML or error message
      */
     public function render_form_shortcode($atts) {
         $atts = shortcode_atts(array(
@@ -702,6 +815,11 @@ class Form_Builder_Microsaas {
     
     /**
      * Enqueue admin assets
+     * 
+     * Loads CSS and JavaScript files for admin pages.
+     * 
+     * @param string $hook Current admin page hook
+     * @return void
      */
     public function enqueue_admin_assets($hook) {
         if (strpos($hook, 'form-builder') === false) {
@@ -746,6 +864,10 @@ class Form_Builder_Microsaas {
     
     /**
      * Enqueue frontend assets
+     * 
+     * Loads CSS and JavaScript files for frontend forms.
+     * 
+     * @return void
      */
     public function enqueue_frontend_assets() {
         // Only enqueue if a form shortcode is present on the page
@@ -777,18 +899,29 @@ class Form_Builder_Microsaas {
      * Debug admin notice (only shown when WP_DEBUG is true)
      */
     public function debug_admin_notice() {
-        $screen = get_current_screen();
-        if (strpos($screen->id, 'form-builder') !== false) {
-            $email_handler_exists = class_exists('Form_Builder_Email_Handler');
-            echo '<div class="notice notice-info"><p>';
-            echo '<strong>Konstruct Form Builder Debug:</strong> Version ' . FORM_BUILDER_VERSION;
-            echo ' | Email Handler: ' . ($email_handler_exists ? '✓ Loaded' : '✗ Not Found');
-            echo '</p></div>';
+        if (!defined('WP_DEBUG') || !WP_DEBUG) {
+            return;
         }
+        
+        $screen = get_current_screen();
+        if (!$screen || strpos($screen->id, 'form-builder') === false) {
+            return;
+        }
+        
+        $email_handler_exists = class_exists('Form_Builder_Email_Handler');
+        echo '<div class="notice notice-info"><p>';
+        echo '<strong>Konstruct Form Builder Debug:</strong> Version ' . esc_html(FORM_BUILDER_VERSION);
+        echo ' | Email Handler: ' . ($email_handler_exists ? '✓ Loaded' : '✗ Not Found');
+        echo '</p></div>';
     }
 
     /**
      * Debug form configuration
+     * 
+     * Returns form configuration for debugging purposes.
+     * 
+     * @param WP_REST_Request $request REST API request object
+     * @return WP_REST_Response|WP_Error Response object or error
      */
     public function debug_form($request) {
         $id = $request->get_param('id');
@@ -811,6 +944,11 @@ class Form_Builder_Microsaas {
 
     /**
      * Test email functionality
+     * 
+     * Sends a test email to verify email configuration.
+     * 
+     * @param WP_REST_Request $request REST API request object
+     * @return WP_REST_Response|WP_Error Response object or error
      */
     public function test_email($request) {
         $params = $request->get_json_params();
@@ -836,6 +974,10 @@ class Form_Builder_Microsaas {
 
     /**
      * Generate UUID
+     * 
+     * Generates a unique identifier for form submissions.
+     * 
+     * @return string UUID string
      */
     private function generate_uuid() {
         return sprintf(
@@ -853,6 +995,11 @@ class Form_Builder_Microsaas {
 
     /**
      * Send step notification (independent of webhooks)
+     * 
+     * Sends email notification for form step completion.
+     * 
+     * @param WP_REST_Request $request REST API request object
+     * @return WP_REST_Response|WP_Error Response object or error
      */
     public function send_step_notification($request) {
         $params = $request->get_json_params();
@@ -895,6 +1042,11 @@ class Form_Builder_Microsaas {
     
     /**
      * Export form
+     * 
+     * Exports a form configuration as JSON.
+     * 
+     * @param WP_REST_Request $request REST API request object
+     * @return WP_REST_Response|WP_Error Response object or error
      */
     public function export_form($request) {
         $id = $request->get_param('id');
@@ -917,6 +1069,11 @@ class Form_Builder_Microsaas {
     
     /**
      * Import form
+     * 
+     * Imports a form configuration from JSON.
+     * 
+     * @param WP_REST_Request $request REST API request object
+     * @return WP_REST_Response|WP_Error Response object or error
      */
     public function import_form($request) {
         $files = $request->get_file_params();
@@ -956,6 +1113,11 @@ class Form_Builder_Microsaas {
     
     /**
      * Get asset version for cache busting
+     * 
+     * Generates version string for CSS/JS assets to prevent caching issues.
+     * 
+     * @param string $asset_path Path to asset file
+     * @return string Version string
      */
     private function get_asset_version($asset_path) {
         // In development mode, use file modification time for aggressive cache busting

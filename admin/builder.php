@@ -53,8 +53,6 @@ $field_types = $builder->get_field_types();
             metaExpires.setAttribute('http-equiv', 'Expires');
             metaExpires.setAttribute('content', '0');
             document.head.appendChild(metaExpires);
-            
-            console.log('Cache busting meta tags added for development mode');
         }
     </script>
     

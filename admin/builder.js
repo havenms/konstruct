@@ -5,8 +5,6 @@
 (function ($) {
   "use strict";
 
-  console.log("Form Builder: JavaScript loaded - Version 1.1.0");
-
   let formData = {};
   let currentPageIndex = 0;
   let currentFieldIndex = null;
@@ -291,9 +289,7 @@
    * Initialize builder
    */
   function initBuilder() {
-    console.log("Form Builder: Initializing...");
     formData = JSON.parse($("#form-data").text());
-    console.log("Form Builder: Loaded form data:", formData);
 
     if (!formData.pages || formData.pages.length === 0) {
       formData.pages = [
@@ -307,12 +303,7 @@
     }
 
     // Initialize notification settings if not present
-    console.log(
-      "Form Builder: Checking notifications...",
-      formData.notifications
-    );
     if (!formData.notifications) {
-      console.log("Form Builder: Initializing notification settings...");
       formData.notifications = {
         step_notifications: {
           enabled: true,
@@ -370,11 +361,6 @@ Best regards,
     ) {
       formData.notifications.submission_notifications.include_admin = true;
     }
-
-    console.log(
-      "Form Builder: Final notification config:",
-      formData.notifications
-    );
 
     // Normalize form data - ensure all fields have required properties
     formData.pages.forEach(function (page, pageIndex) {
@@ -1059,7 +1045,6 @@ Best regards,
               email: email,
             }),
             success: function (response) {
-              console.log("Test email success:", response);
               $result.html(
                 '<span style="color: #00a32a;">✓ Test email sent successfully!</span>'
               );
@@ -1109,7 +1094,6 @@ Best regards,
             "X-WP-Nonce": formBuilderAdmin.nonce,
           },
           success: function (response) {
-            console.log("Debug form config:", response);
             let html = "<strong>Form Debug Info:</strong><br>";
             html += "Form ID: " + response.form_id + "<br>";
             html += "Form Name: " + response.form_name + "<br>";
@@ -1652,7 +1636,6 @@ Best regards,
    * Load forms list
    */
   function loadFormsList() {
-    console.log("Loading forms list...");
     const $tbody = $("#forms-list");
 
     // Show loading state
@@ -1665,7 +1648,6 @@ Best regards,
         xhr.setRequestHeader("X-WP-Nonce", formBuilderAdmin.nonce);
       },
       success: function (response) {
-        console.log("Forms loaded:", response);
         $tbody.empty();
 
         if (response.forms && response.forms.length > 0) {
@@ -1735,7 +1717,6 @@ Best regards,
                       );
                     },
                     success: function (response) {
-                      console.log("Form deleted successfully:", formId);
 
                       // Remove the row immediately for better UX
                       $row.fadeOut(300, function () {
@@ -1761,7 +1742,6 @@ Best regards,
 
                       // Fallback: refresh the entire list after a delay to ensure consistency
                       setTimeout(() => {
-                        console.log("Refreshing forms list as fallback...");
                         loadFormsList();
                       }, 2000);
                     },

@@ -137,23 +137,11 @@ class Form_Builder_Webhook_Handler {
         );
         
         // Send email notification for step completion (always send, regardless of webhook status)
-        // Add debug logging
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('Form Builder: Attempting to send step notification for form ' . $form_id . ', page ' . $page_number);
-            error_log('Form Builder: Form data: ' . print_r($form_data, true));
-        }
-        
         $email_result = false;
         try {
             $email_result = $this->email_handler->send_step_notification($form_id, $page_number, $form_data, $submission_uuid);
         } catch (Exception $e) {
-            if (defined('WP_DEBUG') && WP_DEBUG) {
-                error_log('Form Builder: Email notification exception: ' . $e->getMessage());
-            }
-        }
-        
-        if (defined('WP_DEBUG') && WP_DEBUG) {
-            error_log('Form Builder: Email notification result: ' . ($email_result ? 'success' : 'failed'));
+            // Silently handle email errors to prevent breaking webhook flow
         }
         
         // Return response
