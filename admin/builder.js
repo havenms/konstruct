@@ -887,7 +887,7 @@ Best regards,
     $customJS.append("<h4>Custom JavaScript (Optional)</h4>");
     $customJS.append(
       '<textarea id="custom-js" class="large-text code" rows="5" placeholder="// Custom JS code here">' +
-        escapeHtml(page.customJS || "") +
+        (page.customJS || "") +
         "</textarea>"
     );
     $jsContent.append($customJS);

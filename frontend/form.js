@@ -336,13 +336,31 @@
     this.sendStepNotification(this.currentPage);
 
     // Execute custom JS if present
-    if (currentPageConfig.customJS) {
+    if (currentPageConfig.customJS && currentPageConfig.customJS.trim()) {
       try {
-        // Sandboxed execution
-        const func = new Function("formData", currentPageConfig.customJS);
+        // Create a helper function to decode HTML entities
+        const decodeHtml = (html) => {
+          const txt = document.createElement('textarea');
+          txt.innerHTML = html;
+          return txt.value;
+        };
+        
+        // Clean and decode the JavaScript
+        let cleanJS = currentPageConfig.customJS.trim();
+        
+        // Remove script tags if someone added them
+        cleanJS = cleanJS.replace(/<\/?script[^>]*>/gi, '');
+        
+        // Decode HTML entities
+        cleanJS = decodeHtml(cleanJS);
+        
+        console.log('Executing custom JS:', cleanJS);
+        
+        const func = new Function("formData", cleanJS);
         func(this.formData);
       } catch (e) {
         console.error("Error executing custom JS:", e);
+        console.error("JS code was:", currentPageConfig.customJS);
       }
     }
 
