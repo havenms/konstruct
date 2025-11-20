@@ -230,7 +230,7 @@
 
         // Check required fields
         if (field.required) {
-          let value = this.formData[field.name];
+          let value;
 
           if (field.type === "checkbox") {
             // Check both name formats for checkboxes

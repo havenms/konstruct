@@ -540,9 +540,7 @@ Best regards,
 
     // Update recipient field dropdowns after rendering (delayed to ensure DOM is ready)
     setTimeout(function () {
-      if (typeof populateRecipientFields === "function") {
-        populateRecipientFields();
-      }
+      populateRecipientFields();
     }, 0);
   }
 
