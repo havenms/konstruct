@@ -65,6 +65,12 @@ class Form_Builder_Storage {
         if (isset($data['id']) && !empty($data['id'])) {
             $form_id = intval($data['id']);
 
+            // Add diagnostic logging before update
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[Form_Builder_Storage] Updating form ID: ' . $form_id);
+                error_log('[Form_Builder_Storage] Form config length: ' . strlen($form_config));
+            }
+
             // IMPORTANT: Do not include primary key `id` in the data to update
             $result = $wpdb->update(
                 $this->forms_table,
@@ -79,8 +85,17 @@ class Form_Builder_Storage {
                 if (defined('WP_DEBUG') && WP_DEBUG) {
                     error_log('[Form_Builder_Storage] Update failed for ID ' . $form_id . ' - ' . $wpdb->last_error);
                 }
-                return new WP_Error('update_failed', 'Failed to update form');
+                return new WP_Error('update_failed', 'Failed to update form: ' . $wpdb->last_error);
             }
+
+            // Log when 0 rows are updated (no changes detected)
+            if ($result === 0 && defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('[Form_Builder_Storage] Update returned 0 rows updated for ID ' . $form_id . ' - data may be identical');
+            }
+
+            // Clear any potential object cache for this form
+            wp_cache_delete($form_id, 'form_builder_forms');
+            wp_cache_delete($data['form_slug'], 'form_builder_forms');
 
             return $this->get_form_by_id($form_id);
         }
@@ -108,7 +123,7 @@ class Form_Builder_Storage {
         
         $form = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT * FROM {$this->forms_table} WHERE id = %d",
+                "SELECT SQL_NO_CACHE * FROM {$this->forms_table} WHERE id = %d",
                 $id
             ),
             ARRAY_A
@@ -129,7 +144,7 @@ class Form_Builder_Storage {
         
         $form = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT * FROM {$this->forms_table} WHERE form_slug = %s",
+                "SELECT SQL_NO_CACHE * FROM {$this->forms_table} WHERE form_slug = %s",
                 $slug
             ),
             ARRAY_A
