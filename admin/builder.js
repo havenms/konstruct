@@ -1245,7 +1245,11 @@ Best regards,
       $("#field-name")
         .off("input")
         .on("input", function () {
+          const oldName = field.name;
           field.name = $(this).val();
+          if (formBuilderAdmin.isDev) {
+            console.log('[Form Builder] Field name updated from "' + oldName + '" to "' + field.name + '"');
+          }
         });
     }
 
@@ -1580,6 +1584,11 @@ Best regards,
         field.placeholder = field.placeholder || "";
         field.required = !!field.required;
         field.options = Array.isArray(field.options) ? field.options : [];
+        
+        // Log field names in dev mode
+        if (formBuilderAdmin.isDev && field.name) {
+          console.log('[Form Builder] Saving field on page ' + (pageIndex + 1) + ': name="' + field.name + '", label="' + field.label + '"');
+        }
       });
     });
 
