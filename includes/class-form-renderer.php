@@ -20,6 +20,14 @@ class Form_Builder_Renderer {
      * Render form by slug or ID
      */
     public function render_form($identifier) {
+        // Send no-cache headers to prevent caching of forms
+        // This ensures that when field names are updated, the changes are immediately reflected
+        if (!headers_sent()) {
+            header('Cache-Control: no-cache, no-store, must-revalidate');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+        }
+        
         // Try to get by slug first, then by ID
         if (is_numeric($identifier)) {
             $form = $this->storage->get_form_by_id($identifier);

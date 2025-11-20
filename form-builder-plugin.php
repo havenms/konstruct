@@ -64,6 +64,9 @@ class Form_Builder_Microsaas {
         // Register shortcode
         add_shortcode('form_builder', array($this, 'render_form_shortcode'));
         
+        // Prevent caching of pages with forms
+        add_action('template_redirect', array($this, 'prevent_form_page_caching'));
+        
         // Enqueue admin scripts and styles
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
         
@@ -698,6 +701,36 @@ class Form_Builder_Microsaas {
         
         $renderer = new Form_Builder_Renderer();
         return $renderer->render_form($atts['id']);
+    }
+    
+    /**
+     * Prevent caching of pages with forms
+     * This ensures field name updates are immediately reflected
+     */
+    public function prevent_form_page_caching() {
+        global $post;
+        
+        // Check if the current post/page contains the form_builder shortcode
+        if (is_singular() && isset($post->post_content) && has_shortcode($post->post_content, 'form_builder')) {
+            // Send no-cache headers
+            if (!headers_sent()) {
+                header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
+                header('Pragma: no-cache');
+                header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+                header('X-Accel-Expires: 0'); // For Nginx
+            }
+            
+            // Set WordPress constant to prevent object caching
+            if (!defined('DONOTCACHEPAGE')) {
+                define('DONOTCACHEPAGE', true);
+            }
+            if (!defined('DONOTCACHEDB')) {
+                define('DONOTCACHEDB', true);
+            }
+            if (!defined('DONOTCACHEOBJECT')) {
+                define('DONOTCACHEOBJECT', true);
+            }
+        }
     }
     
     /**

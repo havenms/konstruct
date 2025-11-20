@@ -93,6 +93,10 @@ class Form_Builder_Storage {
                 error_log('[Form_Builder_Storage] Update returned 0 rows updated for ID ' . $form_id . ' - data may be identical');
             }
 
+            // Clear any potential object cache for this form
+            wp_cache_delete($form_id, 'form_builder_forms');
+            wp_cache_delete($data['form_slug'], 'form_builder_forms');
+
             return $this->get_form_by_id($form_id);
         }
         
