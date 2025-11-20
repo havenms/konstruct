@@ -359,29 +359,56 @@
           console.log("Executing custom JS:", cleanJS);
 
           // Check if Facebook Pixel is available
-          if (cleanJS.includes('fbq(') && typeof window.fbq === 'undefined') {
-            console.warn('Facebook Pixel (fbq) is not available. Make sure the Facebook Pixel base code is installed.');
-            console.log('Available global functions:', Object.keys(window).filter(key => key.includes('fb') || key.includes('pixel')));
+          if (cleanJS.includes("fbq(") && typeof window.fbq === "undefined") {
+            console.warn(
+              "Facebook Pixel (fbq) is not available. Make sure the Facebook Pixel base code is installed."
+            );
+            console.log(
+              "Available global functions:",
+              Object.keys(window).filter(
+                (key) => key.includes("fb") || key.includes("pixel")
+              )
+            );
           }
 
-          // Create enhanced execution context with debugging
-          const func = new Function("formData", "fbq", "gtag", "dataLayer", `
-            // Debug info
-            console.log('Custom JS context - formData:', formData);
-            console.log('Custom JS context - fbq available:', typeof fbq !== 'undefined');
-            console.log('Custom JS context - gtag available:', typeof gtag !== 'undefined');
-            
-            // Execute the custom code
-            ${cleanJS}
-          `);
+          // Debug info first
+          console.log('Custom JS context - formData:', this.formData);
+          console.log('Custom JS context - fbq available:', typeof window.fbq !== 'undefined');
+          console.log('Custom JS context - gtag available:', typeof window.gtag !== 'undefined');
           
-          // Pass available tracking functions
-          func(
-            this.formData, 
-            window.fbq || function() { console.warn('fbq not available:', arguments); },
-            window.gtag || function() { console.warn('gtag not available:', arguments) },
-            window.dataLayer || []
-          );
+          // Execute each line of custom JS individually to prevent one error from stopping everything
+          const lines = cleanJS.split(/[;\n]/);
+          lines.forEach((line, index) => {
+            const trimmedLine = line.trim();
+            if (trimmedLine && !trimmedLine.startsWith('//')) {
+              try {
+                console.log(`Executing line ${index + 1}:`, trimmedLine);
+                
+                // Create function with access to common variables
+                const func = new Function(
+                  "formData",
+                  "fbq", 
+                  "gtag",
+                  "dataLayer",
+                  `return (${trimmedLine})`
+                );
+                
+                const result = func(
+                  this.formData,
+                  window.fbq || function() { console.warn("fbq not available:", arguments); },
+                  window.gtag || function() { console.warn("gtag not available:", arguments); },
+                  window.dataLayer || []
+                );
+                
+                if (result !== undefined) {
+                  console.log(`Line ${index + 1} result:`, result);
+                }
+              } catch (e) {
+                console.error(`Error executing line ${index + 1} (${trimmedLine}):`, e);
+                // Continue with next line instead of stopping
+              }
+            }
+          });
         } catch (e) {
           console.error("Error executing custom JS:", e);
           console.error("JS code was:", currentPageConfig.customJS);
