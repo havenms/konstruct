@@ -1,0 +1,21 @@
+# Test files
+test-*.php
+
+# WordPress files (if this is a WordPress plugin)
+*.log
+.htaccess
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+/tmp/
+*.tmp
