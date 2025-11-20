@@ -337,31 +337,56 @@
 
     // Execute custom JS if present
     if (currentPageConfig.customJS && currentPageConfig.customJS.trim()) {
-      try {
-        // Create a helper function to decode HTML entities
-        const decodeHtml = (html) => {
-          const txt = document.createElement('textarea');
-          txt.innerHTML = html;
-          return txt.value;
-        };
-        
-        // Clean and decode the JavaScript
-        let cleanJS = currentPageConfig.customJS.trim();
-        
-        // Remove script tags if someone added them
-        cleanJS = cleanJS.replace(/<\/?script[^>]*>/gi, '');
-        
-        // Decode HTML entities
-        cleanJS = decodeHtml(cleanJS);
-        
-        console.log('Executing custom JS:', cleanJS);
-        
-        const func = new Function("formData", cleanJS);
-        func(this.formData);
-      } catch (e) {
-        console.error("Error executing custom JS:", e);
-        console.error("JS code was:", currentPageConfig.customJS);
-      }
+      // Add a small delay to ensure other scripts (like Facebook Pixel) are ready
+      setTimeout(() => {
+        try {
+          // Create a helper function to decode HTML entities
+          const decodeHtml = (html) => {
+            const txt = document.createElement("textarea");
+            txt.innerHTML = html;
+            return txt.value;
+          };
+
+          // Clean and decode the JavaScript
+          let cleanJS = currentPageConfig.customJS.trim();
+
+          // Remove script tags if someone added them
+          cleanJS = cleanJS.replace(/<\/?script[^>]*>/gi, "");
+
+          // Decode HTML entities
+          cleanJS = decodeHtml(cleanJS);
+
+          console.log("Executing custom JS:", cleanJS);
+
+          // Check if Facebook Pixel is available
+          if (cleanJS.includes('fbq(') && typeof window.fbq === 'undefined') {
+            console.warn('Facebook Pixel (fbq) is not available. Make sure the Facebook Pixel base code is installed.');
+            console.log('Available global functions:', Object.keys(window).filter(key => key.includes('fb') || key.includes('pixel')));
+          }
+
+          // Create enhanced execution context with debugging
+          const func = new Function("formData", "fbq", "gtag", "dataLayer", `
+            // Debug info
+            console.log('Custom JS context - formData:', formData);
+            console.log('Custom JS context - fbq available:', typeof fbq !== 'undefined');
+            console.log('Custom JS context - gtag available:', typeof gtag !== 'undefined');
+            
+            // Execute the custom code
+            ${cleanJS}
+          `);
+          
+          // Pass available tracking functions
+          func(
+            this.formData, 
+            window.fbq || function() { console.warn('fbq not available:', arguments); },
+            window.gtag || function() { console.warn('gtag not available:', arguments) },
+            window.dataLayer || []
+          );
+        } catch (e) {
+          console.error("Error executing custom JS:", e);
+          console.error("JS code was:", currentPageConfig.customJS);
+        }
+      }, 100); // 100ms delay to ensure other scripts are loaded
     }
 
     if (this.currentPage < this.totalPages) {
