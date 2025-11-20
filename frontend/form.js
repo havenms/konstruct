@@ -356,8 +356,6 @@
           // Decode HTML entities
           cleanJS = decodeHtml(cleanJS);
 
-          console.log("Executing custom JS:", cleanJS);
-
           // Simple, generic execution with formData context
           const func = new Function("formData", cleanJS);
           func(this.formData);
