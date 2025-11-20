@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name: Form Builder Microsaas
+ * Plugin Name: Konstruct Form Builder
  * Plugin URI: https://example.com/form-builder
  * Description: A standalone form builder tool that creates paginated forms with configurable per-page webhooks. All data stored in WordPress database.
- * Version: 1.0.0
+ * Version: 1.2.0
  * Author: Your Name
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -16,9 +16,12 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('FORM_BUILDER_VERSION', '1.0.0');
+define('FORM_BUILDER_VERSION', '1.2.0');
 define('FORM_BUILDER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('FORM_BUILDER_PLUGIN_URL', plugin_dir_url(__FILE__));
+
+// Development mode - set to true during development to enable aggressive cache busting
+define('FORM_BUILDER_DEV_MODE', defined('WP_DEBUG') && WP_DEBUG);
 
 /**
  * Main Plugin Class
@@ -61,11 +64,19 @@ class Form_Builder_Microsaas {
         // Register shortcode
         add_shortcode('form_builder', array($this, 'render_form_shortcode'));
         
+        // Prevent caching of pages with forms
+        add_action('template_redirect', array($this, 'prevent_form_page_caching'));
+        
         // Enqueue admin scripts and styles
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
         
         // Enqueue frontend scripts and styles
         add_action('wp_enqueue_scripts', array($this, 'enqueue_frontend_assets'));
+        
+        // Add admin notice for debugging
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            add_action('admin_notices', array($this, 'debug_admin_notice'));
+        }
     }
     
     /**
@@ -76,6 +87,7 @@ class Form_Builder_Microsaas {
         require_once FORM_BUILDER_PLUGIN_DIR . 'includes/class-form-builder.php';
         require_once FORM_BUILDER_PLUGIN_DIR . 'includes/class-form-renderer.php';
         require_once FORM_BUILDER_PLUGIN_DIR . 'includes/class-webhook-handler.php';
+        require_once FORM_BUILDER_PLUGIN_DIR . 'includes/class-email-handler.php';
     }
     
     /**
@@ -178,8 +190,8 @@ class Form_Builder_Microsaas {
      */
     public function add_admin_menu() {
         add_menu_page(
-            __('Form Builder', 'form-builder-microsaas'),
-            __('Form Builder', 'form-builder-microsaas'),
+            __('Konstruct Form Builder', 'form-builder-microsaas'),
+            __('Konstruct Form Builder', 'form-builder-microsaas'),
             'manage_options',
             'form-builder',
             array($this, 'render_builder_page'),
@@ -219,6 +231,14 @@ class Form_Builder_Microsaas {
      * Render builder admin page
      */
     public function render_builder_page() {
+        // Add cache-busting headers for admin pages to help with LiteSpeed Cache
+        if (!headers_sent()) {
+            header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
+            header('Pragma: no-cache');
+            header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+            header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+        }
+        
         require_once FORM_BUILDER_PLUGIN_DIR . 'admin/builder.php';
     }
 
@@ -226,6 +246,14 @@ class Form_Builder_Microsaas {
      * Render submissions admin page
      */
     public function render_submissions_page() {
+        // Add cache-busting headers for admin pages to help with LiteSpeed Cache
+        if (!headers_sent()) {
+            header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
+            header('Pragma: no-cache');
+            header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+            header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+        }
+        
         require_once FORM_BUILDER_PLUGIN_DIR . 'admin/submissions.php';
     }
     
@@ -272,6 +300,36 @@ class Form_Builder_Microsaas {
         register_rest_route('form-builder/v1', '/submissions', array(
             'methods' => 'GET',
             'callback' => array($this, 'get_submissions'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
+
+        register_rest_route('form-builder/v1', '/test-email', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'test_email'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
+
+        register_rest_route('form-builder/v1', '/debug-form/(?P<id>\d+)', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'debug_form'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
+
+        register_rest_route('form-builder/v1', '/step-notification', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'send_step_notification'),
+            'permission_callback' => '__return_true',
+        ));
+
+        register_rest_route('form-builder/v1', '/forms/(?P<id>\d+)/export', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'export_form'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
+
+        register_rest_route('form-builder/v1', '/forms/import', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'import_form'),
             'permission_callback' => array($this, 'check_admin_permission'),
         ));
 
@@ -463,6 +521,10 @@ class Form_Builder_Microsaas {
             );
         }
 
+        // Send final submission email notification
+        $email_handler = new Form_Builder_Email_Handler();
+        $email_handler->send_submission_notification($form_id, $form_data, $submission_uuid);
+
         return new WP_REST_Response(array(
             'success' => true,
             'submission_id' => $submission_id,
@@ -642,6 +704,36 @@ class Form_Builder_Microsaas {
     }
     
     /**
+     * Prevent caching of pages with forms
+     * This ensures field name updates are immediately reflected
+     */
+    public function prevent_form_page_caching() {
+        global $post;
+        
+        // Check if the current post/page contains the form_builder shortcode
+        if (is_singular() && isset($post->post_content) && has_shortcode($post->post_content, 'form_builder')) {
+            // Send no-cache headers
+            if (!headers_sent()) {
+                header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
+                header('Pragma: no-cache');
+                header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+                header('X-Accel-Expires: 0'); // For Nginx
+            }
+            
+            // Set WordPress constant to prevent object caching
+            if (!defined('DONOTCACHEPAGE')) {
+                define('DONOTCACHEPAGE', true);
+            }
+            if (!defined('DONOTCACHEDB')) {
+                define('DONOTCACHEDB', true);
+            }
+            if (!defined('DONOTCACHEOBJECT')) {
+                define('DONOTCACHEOBJECT', true);
+            }
+        }
+    }
+    
+    /**
      * Enqueue admin assets
      */
     public function enqueue_admin_assets($hook) {
@@ -649,18 +741,29 @@ class Form_Builder_Microsaas {
             return;
         }
         
+        // Add cache-busting headers for admin pages
+        if (!headers_sent()) {
+            header('Cache-Control: no-cache, no-store, must-revalidate');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+        }
+        
+        // Generate dynamic version for cache busting
+        $css_version = $this->get_asset_version('admin/builder.css');
+        $js_version = $this->get_asset_version('admin/builder.js');
+        
         wp_enqueue_style(
             'form-builder-admin',
             FORM_BUILDER_PLUGIN_URL . 'admin/builder.css',
             array(),
-            FORM_BUILDER_VERSION
+            $css_version
         );
         
         wp_enqueue_script(
             'form-builder-admin',
             FORM_BUILDER_PLUGIN_URL . 'admin/builder.js',
             array('jquery'),
-            FORM_BUILDER_VERSION,
+            $js_version,
             true
         );
         
@@ -669,6 +772,8 @@ class Form_Builder_Microsaas {
             'nonce' => wp_create_nonce('wp_rest'),
             'saveNonce' => wp_create_nonce('form_builder_save'),
             'adminUrl' => admin_url('admin.php'),
+            'cacheKey' => time(), // Additional cache buster
+            'isDev' => defined('WP_DEBUG') && WP_DEBUG,
         ));
     }
     
@@ -702,6 +807,67 @@ class Form_Builder_Microsaas {
     }
 
     /**
+     * Debug admin notice (only shown when WP_DEBUG is true)
+     */
+    public function debug_admin_notice() {
+        $screen = get_current_screen();
+        if (strpos($screen->id, 'form-builder') !== false) {
+            $email_handler_exists = class_exists('Form_Builder_Email_Handler');
+            echo '<div class="notice notice-info"><p>';
+            echo '<strong>Konstruct Form Builder Debug:</strong> Version ' . FORM_BUILDER_VERSION;
+            echo ' | Email Handler: ' . ($email_handler_exists ? '✓ Loaded' : '✗ Not Found');
+            echo '</p></div>';
+        }
+    }
+
+    /**
+     * Debug form configuration
+     */
+    public function debug_form($request) {
+        $id = $request->get_param('id');
+        $storage = new Form_Builder_Storage();
+        $form = $storage->get_form_by_id($id);
+        
+        if (!$form) {
+            return new WP_Error('form_not_found', 'Form not found', array('status' => 404));
+        }
+        
+        $form_config = json_decode($form['form_config'], true);
+        
+        return new WP_REST_Response(array(
+            'form_id' => $id,
+            'form_name' => $form['form_name'],
+            'notifications' => isset($form_config['notifications']) ? $form_config['notifications'] : 'Not set',
+            'raw_config' => $form_config
+        ), 200);
+    }
+
+    /**
+     * Test email functionality
+     */
+    public function test_email($request) {
+        $params = $request->get_json_params();
+        
+        if (empty($params['email'])) {
+            return new WP_Error('missing_email', 'Email address is required', array('status' => 400));
+        }
+        
+        $email = sanitize_email($params['email']);
+        if (!is_email($email)) {
+            return new WP_Error('invalid_email', 'Invalid email address', array('status' => 400));
+        }
+        
+        $email_handler = new Form_Builder_Email_Handler();
+        $result = $email_handler->test_email_config($email);
+        
+        if ($result) {
+            return new WP_REST_Response(array('success' => true, 'message' => 'Test email sent successfully'), 200);
+        } else {
+            return new WP_Error('email_failed', 'Failed to send test email', array('status' => 500));
+        }
+    }
+
+    /**
      * Generate UUID
      */
     private function generate_uuid() {
@@ -717,8 +883,129 @@ class Form_Builder_Microsaas {
             mt_rand(0, 0xffff)
         );
     }
+
+    /**
+     * Send step notification (independent of webhooks)
+     */
+    public function send_step_notification($request) {
+        $params = $request->get_json_params();
+        
+        // Validate required parameters
+        if (empty($params['form_id']) || empty($params['page_number']) || !isset($params['form_data'])) {
+            return new WP_Error(
+                'missing_params',
+                'form_id, page_number, and form_data are required',
+                array('status' => 400)
+            );
+        }
+        
+        $form_id = intval($params['form_id']);
+        $page_number = intval($params['page_number']);
+        $form_data = $params['form_data'];
+        $submission_uuid = isset($params['submission_uuid']) ? sanitize_text_field($params['submission_uuid']) : $this->generate_uuid();
+        
+        // Validate form exists
+        $storage = new Form_Builder_Storage();
+        $form = $storage->get_form_by_id($form_id);
+        if (!$form) {
+            return new WP_Error(
+                'form_not_found',
+                'Form not found',
+                array('status' => 404)
+            );
+        }
+        
+        // Send email notification
+        $email_handler = new Form_Builder_Email_Handler();
+        $email_result = $email_handler->send_step_notification($form_id, $page_number, $form_data, $submission_uuid);
+        
+        return new WP_REST_Response(array(
+            'success' => true,
+            'email_sent' => $email_result,
+            'submission_uuid' => $submission_uuid
+        ), 200);
+    }
+    
+    /**
+     * Export form
+     */
+    public function export_form($request) {
+        $id = $request->get_param('id');
+        $builder = new Form_Builder_Builder();
+        
+        $export_data = $builder->export_form($id);
+        
+        if (is_wp_error($export_data)) {
+            return $export_data;
+        }
+        
+        // Set headers for file download
+        $filename = 'form-' . $export_data['form']['slug'] . '-' . date('Y-m-d') . '.json';
+        
+        return new WP_REST_Response($export_data, 200, array(
+            'Content-Type' => 'application/json',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"'
+        ));
+    }
+    
+    /**
+     * Import form
+     */
+    public function import_form($request) {
+        $files = $request->get_file_params();
+        
+        if (empty($files['import_file'])) {
+            return new WP_Error('no_file', 'No import file provided', array('status' => 400));
+        }
+        
+        $file = $files['import_file'];
+        
+        // Validate file type
+        if ($file['type'] !== 'application/json' && pathinfo($file['name'], PATHINFO_EXTENSION) !== 'json') {
+            return new WP_Error('invalid_file_type', 'Only JSON files are allowed', array('status' => 400));
+        }
+        
+        // Read file contents
+        $json_content = file_get_contents($file['tmp_name']);
+        
+        if ($json_content === false) {
+            return new WP_Error('file_read_error', 'Could not read file', array('status' => 500));
+        }
+        
+        // Import the form
+        $builder = new Form_Builder_Builder();
+        $result = $builder->import_form($json_content);
+        
+        if (is_wp_error($result)) {
+            return $result;
+        }
+        
+        return new WP_REST_Response(array(
+            'success' => true,
+            'form' => $result,
+            'message' => 'Form imported successfully'
+        ), 200);
+    }
+    
+    /**
+     * Get asset version for cache busting
+     */
+    private function get_asset_version($asset_path) {
+        // In development mode, use file modification time for aggressive cache busting
+        if (FORM_BUILDER_DEV_MODE) {
+            $file_path = FORM_BUILDER_PLUGIN_DIR . $asset_path;
+            if (file_exists($file_path)) {
+                return filemtime($file_path);
+            }
+            // If file doesn't exist, use current timestamp
+            return time();
+        }
+        
+        // In production, use version + timestamp for cache busting with LiteSpeed
+        return FORM_BUILDER_VERSION . '.' . time();
+    }
 }
 
-// Initialize the plugin
+// Initialize plugin
 Form_Builder_Microsaas::get_instance();
 

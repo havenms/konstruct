@@ -20,6 +20,14 @@ class Form_Builder_Renderer {
      * Render form by slug or ID
      */
     public function render_form($identifier) {
+        // Send no-cache headers to prevent caching of forms
+        // This ensures that when field names are updated, the changes are immediately reflected
+        if (!headers_sent()) {
+            header('Cache-Control: no-cache, no-store, must-revalidate');
+            header('Pragma: no-cache');
+            header('Expires: 0');
+        }
+        
         // Try to get by slug first, then by ID
         if (is_numeric($identifier)) {
             $form = $this->storage->get_form_by_id($identifier);
@@ -117,6 +125,16 @@ class Form_Builder_Renderer {
         $required = isset($field['required']) && $field['required'] ? 'required' : '';
         $placeholder = isset($field['placeholder']) ? esc_attr($field['placeholder']) : '';
         
+        // Handle label field type differently - no form field wrapper needed
+        if ($field_type === 'label') {
+            ?>
+            <div class="form-builder-field form-builder-field-label" data-field-id="<?php echo esc_attr($field_id); ?>">
+                <?php $this->render_label($field_id, $field); ?>
+            </div>
+            <?php
+            return;
+        }
+        
         ?>
         <div class="form-builder-field form-builder-field-<?php echo esc_attr($field_type); ?>" data-field-id="<?php echo esc_attr($field_id); ?>">
             <label for="<?php echo esc_attr($field_id); ?>">
@@ -128,6 +146,7 @@ class Form_Builder_Renderer {
             
             <?php
             switch ($field_type) {
+                
                 case 'textarea':
                     $this->render_textarea($field_id, $field_name, $required, $placeholder);
                     break;
@@ -146,6 +165,10 @@ class Form_Builder_Renderer {
                 
                 case 'file':
                     $this->render_file($field_id, $field_name, $required);
+                    break;
+                
+                case 'link':
+                    $this->render_link($field_id, $field_name, $field);
                     break;
                 
                 default:
@@ -306,6 +329,52 @@ class Form_Builder_Renderer {
             class="form-builder-file"
             <?php echo $required ? 'required' : ''; ?>
         />
+        <?php
+    }
+    
+    /**
+     * Render label/heading field
+     */
+    private function render_label($id, $field) {
+        $text = isset($field['label']) ? esc_html($field['label']) : '';
+        $tag = isset($field['label_tag']) ? esc_attr($field['label_tag']) : 'h3';
+        $style = isset($field['label_style']) ? esc_attr($field['label_style']) : '';
+        
+        if (empty($text)) {
+            return;
+        }
+        
+        ?>
+        <<?php echo $tag; ?> 
+            class="form-builder-label-field <?php echo $style ? 'form-builder-label-' . $style : ''; ?>"
+            id="<?php echo esc_attr($id); ?>"
+        >
+            <?php echo $text; ?>
+        </<?php echo $tag; ?>>
+        <?php
+    }
+    
+    /**
+     * Render link button
+     */
+    private function render_link($id, $name, $field) {
+        $url = isset($field['url']) && !empty($field['url']) ? esc_url($field['url']) : '#';
+        $target = isset($field['target']) && $field['target'] === 'new' ? '_blank' : '_self';
+        $button_text = isset($field['button_text']) && !empty($field['button_text']) ? esc_html($field['button_text']) : esc_html($field['label']);
+        $button_style = isset($field['button_style']) ? esc_attr($field['button_style']) : 'primary';
+        
+        ?>
+        <a 
+            href="<?php echo $url; ?>" 
+            target="<?php echo esc_attr($target); ?>"
+            class="form-builder-link-button form-builder-link-<?php echo $button_style; ?>"
+            id="<?php echo esc_attr($id); ?>"
+            <?php if ($target === '_blank'): ?>
+                rel="noopener noreferrer"
+            <?php endif; ?>
+        >
+            <?php echo $button_text; ?>
+        </a>
         <?php
     }
     

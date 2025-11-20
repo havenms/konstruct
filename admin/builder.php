@@ -35,14 +35,65 @@ $field_types = $builder->get_field_types();
 ?>
 
 <div class="wrap form-builder-admin">
-    <h1><?php echo $action === 'edit' ? __('Edit Form', 'form-builder-microsaas') : ($action === 'new' ? __('Add New Form', 'form-builder-microsaas') : __('Form Builder', 'form-builder-microsaas')); ?></h1>
+    <!-- Cache busting meta tags -->
+    <script type="text/javascript">
+        // Add cache busting meta tags
+        if (typeof formBuilderAdmin !== 'undefined' && formBuilderAdmin.isDev) {
+            var metaNoCache = document.createElement('meta');
+            metaNoCache.setAttribute('http-equiv', 'Cache-Control');
+            metaNoCache.setAttribute('content', 'no-cache, no-store, must-revalidate');
+            document.head.appendChild(metaNoCache);
+            
+            var metaPragma = document.createElement('meta');
+            metaPragma.setAttribute('http-equiv', 'Pragma');
+            metaPragma.setAttribute('content', 'no-cache');
+            document.head.appendChild(metaPragma);
+            
+            var metaExpires = document.createElement('meta');
+            metaExpires.setAttribute('http-equiv', 'Expires');
+            metaExpires.setAttribute('content', '0');
+            document.head.appendChild(metaExpires);
+            
+            console.log('Cache busting meta tags added for development mode');
+        }
+    </script>
+    
+    <h1><?php echo $action === 'edit' ? __('Edit Form', 'form-builder-microsaas') : ($action === 'new' ? __('Add New Form', 'form-builder-microsaas') : __('Konstruct Form Builder', 'form-builder-microsaas')); ?></h1>
     
     <?php if ($action === 'list'): ?>
         <!-- Forms List -->
         <div class="form-builder-list">
-            <a href="<?php echo admin_url('admin.php?page=form-builder-new'); ?>" class="button button-primary">
-                <?php _e('Add New Form', 'form-builder-microsaas'); ?>
-            </a>
+            <div class="form-builder-list-actions">
+                <a href="<?php echo admin_url('admin.php?page=form-builder-new'); ?>" class="button button-primary">
+                    <?php _e('Add New Form', 'form-builder-microsaas'); ?>
+                </a>
+                <button type="button" id="import-form-btn" class="button button-secondary">
+                    <?php _e('Import Form', 'form-builder-microsaas'); ?>
+                </button>
+            </div>
+            
+            <!-- Import Form Modal -->
+            <div id="import-form-modal" class="form-builder-modal" style="display: none;">
+                <div class="form-builder-modal-content">
+                    <div class="form-builder-modal-header">
+                        <h3><?php _e('Import Form', 'form-builder-microsaas'); ?></h3>
+                        <button type="button" class="form-builder-modal-close">&times;</button>
+                    </div>
+                    <div class="form-builder-modal-body">
+                        <p><?php _e('Select a JSON file exported from Form Builder to import:', 'form-builder-microsaas'); ?></p>
+                        <input type="file" id="import-file-input" accept=".json" />
+                        <div id="import-status" class="form-builder-import-status"></div>
+                    </div>
+                    <div class="form-builder-modal-footer">
+                        <button type="button" id="import-form-submit" class="button button-primary" disabled>
+                            <?php _e('Import', 'form-builder-microsaas'); ?>
+                        </button>
+                        <button type="button" class="button form-builder-modal-close">
+                            <?php _e('Cancel', 'form-builder-microsaas'); ?>
+                        </button>
+                    </div>
+                </div>
+            </div>
             
             <table class="wp-list-table widefat fixed striped">
                 <thead>
@@ -107,5 +158,24 @@ $field_types = $builder->get_field_types();
             <?php echo json_encode($form ? $form['form_config'] : $builder->get_default_form()); ?>
         </script>
     <?php endif; ?>
+    
+    <!-- Notification Container -->
+    <div id="form-builder-notifications" class="form-builder-notifications"></div>
+    
+    <!-- Confirmation Dialog Container -->
+    <div id="form-builder-confirm-dialog" class="form-builder-confirm-dialog" style="display: none;">
+        <div class="form-builder-confirm-content">
+            <div class="form-builder-confirm-header">
+                <h3 id="form-builder-confirm-title" class="form-builder-confirm-title">Confirm Action</h3>
+            </div>
+            <div class="form-builder-confirm-body">
+                <p id="form-builder-confirm-message" class="form-builder-confirm-message">Are you sure?</p>
+            </div>
+            <div class="form-builder-confirm-footer">
+                <button type="button" id="form-builder-confirm-cancel" class="button">Cancel</button>
+                <button type="button" id="form-builder-confirm-ok" class="button button-primary">Confirm</button>
+            </div>
+        </div>
+    </div>
 </div>
 

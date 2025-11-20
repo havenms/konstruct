@@ -11,9 +11,19 @@ if (!defined('ABSPATH')) {
 class Form_Builder_Webhook_Handler {
     
     private $storage;
+    private $email_handler;
     
     public function __construct() {
+        // Ensure required classes are loaded
+        if (!class_exists('Form_Builder_Storage')) {
+            require_once FORM_BUILDER_PLUGIN_DIR . 'includes/class-form-storage.php';
+        }
+        if (!class_exists('Form_Builder_Email_Handler')) {
+            require_once FORM_BUILDER_PLUGIN_DIR . 'includes/class-email-handler.php';
+        }
+        
         $this->storage = new Form_Builder_Storage();
+        $this->email_handler = new Form_Builder_Email_Handler();
     }
     
     /**
@@ -125,6 +135,26 @@ class Form_Builder_Webhook_Handler {
             $response_time,
             isset($response['error']) ? $response['error'] : null
         );
+        
+        // Send email notification for step completion (always send, regardless of webhook status)
+        // Add debug logging
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('Form Builder: Attempting to send step notification for form ' . $form_id . ', page ' . $page_number);
+            error_log('Form Builder: Form data: ' . print_r($form_data, true));
+        }
+        
+        $email_result = false;
+        try {
+            $email_result = $this->email_handler->send_step_notification($form_id, $page_number, $form_data, $submission_uuid);
+        } catch (Exception $e) {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+                error_log('Form Builder: Email notification exception: ' . $e->getMessage());
+            }
+        }
+        
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('Form Builder: Email notification result: ' . ($email_result ? 'success' : 'failed'));
+        }
         
         // Return response
         if (isset($response['error'])) {
