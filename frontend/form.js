@@ -176,9 +176,153 @@
       value = field.value;
     }
 
+    // Real-time validation for phone fields
+    const isPhoneField =
+      field.type === "tel" ||
+      (fieldName && fieldName.toLowerCase().indexOf("phone") !== -1);
+
+    if (isPhoneField) {
+      if (value && value.trim() !== "") {
+        if (!this.validateUSPhoneNumber(value)) {
+          this.showFieldError(
+            field,
+            "Please enter a valid US phone number (e.g., (123) 456-7890 or 123-456-7890)"
+          );
+        } else {
+          this.clearFieldError(field);
+          // Normalize to E.164 format before saving
+          const normalized = this.normalizeToE164(value);
+          if (normalized) {
+            value = normalized;
+          }
+        }
+      } else {
+        // Clear error if field is empty (unless it's required, which will be handled in validateCurrentPage)
+        this.clearFieldError(field);
+      }
+    }
+
     console.log("Field change - name:", fieldName, "value:", value);
     this.formData[fieldName] = value;
     this.saveData();
+  };
+
+  /**
+   * Validate US phone number format
+   * Accepts formats: (123) 456-7890, 123-456-7890, 123.456.7890, 1234567890, +1 123 456 7890, +1-123-456-7890, 1-123-456-7890
+   */
+  FormBuilderInstance.prototype.validateUSPhoneNumber = function (phone) {
+    if (!phone || typeof phone !== "string") {
+      return false;
+    }
+
+    // Remove all whitespace
+    let cleaned = phone.trim().replace(/\s+/g, "");
+
+    // Remove common formatting characters but keep digits, +, and -
+    cleaned = cleaned.replace(/[^\d+\-()]/g, "");
+
+    // Check for +1 prefix and remove it
+    if (cleaned.startsWith("+1")) {
+      cleaned = cleaned.substring(2);
+    } else if (cleaned.startsWith("1") && cleaned.length === 11) {
+      // Handle 1-XXX-XXX-XXXX format
+      cleaned = cleaned.substring(1);
+    }
+
+    // Remove remaining formatting characters
+    cleaned = cleaned.replace(/[^\d]/g, "");
+
+    // Must be exactly 10 digits
+    if (cleaned.length !== 10) {
+      return false;
+    }
+
+    // Check if all digits are valid (not all zeros, etc.)
+    if (!/^\d{10}$/.test(cleaned)) {
+      return false;
+    }
+
+    // Validate area code (first 3 digits) - cannot start with 0 or 1
+    const areaCode = cleaned.substring(0, 3);
+    if (areaCode[0] === "0" || areaCode[0] === "1") {
+      return false;
+    }
+
+    // Validate exchange code (next 3 digits) - cannot start with 0 or 1
+    const exchangeCode = cleaned.substring(3, 6);
+    if (exchangeCode[0] === "0" || exchangeCode[0] === "1") {
+      return false;
+    }
+
+    return true;
+  };
+
+  /**
+   * Normalize US phone number to E.164 format (+1XXXXXXXXXX)
+   * Returns null if phone number is invalid
+   */
+  FormBuilderInstance.prototype.normalizeToE164 = function (phone) {
+    if (!phone || typeof phone !== "string") {
+      return null;
+    }
+
+    // First validate the phone number
+    if (!this.validateUSPhoneNumber(phone)) {
+      return null;
+    }
+
+    // Remove all whitespace
+    let cleaned = phone.trim().replace(/\s+/g, "");
+
+    // Remove common formatting characters but keep digits, +, and -
+    cleaned = cleaned.replace(/[^\d+\-()]/g, "");
+
+    // Check for +1 prefix and remove it
+    if (cleaned.startsWith("+1")) {
+      cleaned = cleaned.substring(2);
+    } else if (cleaned.startsWith("1") && cleaned.length === 11) {
+      // Handle 1-XXX-XXX-XXXX format
+      cleaned = cleaned.substring(1);
+    }
+
+    // Remove remaining formatting characters to get just the 10 digits
+    cleaned = cleaned.replace(/[^\d]/g, "");
+
+    // Return in E.164 format: +1 followed by 10 digits
+    return "+1" + cleaned;
+  };
+
+  /**
+   * Normalize all phone numbers in formData to E.164 format
+   */
+  FormBuilderInstance.prototype.normalizeAllPhoneNumbers = function () {
+    const self = this;
+
+    // Iterate through all pages and fields to find phone fields
+    this.config.pages.forEach(function (page) {
+      if (page.fields) {
+        page.fields.forEach(function (field) {
+          // Check if this is a phone field
+          const isPhoneField =
+            field.type === "tel" ||
+            (field.name && field.name.toLowerCase().indexOf("phone") !== -1);
+
+          if (isPhoneField && field.name && self.formData[field.name]) {
+            const phoneValue = self.formData[field.name];
+            if (phoneValue && typeof phoneValue === "string" && phoneValue.trim() !== "") {
+              // Only normalize if not already in E.164 format
+              if (!phoneValue.startsWith("+1") || phoneValue.length !== 12) {
+                const normalized = self.normalizeToE164(phoneValue);
+                if (normalized) {
+                  self.formData[field.name] = normalized;
+                }
+              }
+            }
+          }
+        });
+      }
+    });
   };
 
   FormBuilderInstance.prototype.validateCurrentPage = function () {
@@ -210,12 +354,12 @@
           // Try finding by field id if name doesn't match
           fieldElement = this.formElement.querySelector(
             '[data-field-id="' +
-              field.id +
-              '"] input, [data-field-id="' +
-              field.id +
-              '"] textarea, [data-field-id="' +
-              field.id +
-              '"] select'
+            field.id +
+            '"] input, [data-field-id="' +
+            field.id +
+            '"] textarea, [data-field-id="' +
+            field.id +
+            '"] select'
           );
         }
         if (!fieldElement) {
@@ -263,6 +407,25 @@
           }
         } else {
           this.clearFieldError(fieldElement);
+        }
+
+        // Validate phone number fields (type 'tel' or field name contains 'phone')
+        const isPhoneField =
+          field.type === "tel" ||
+          (field.name && field.name.toLowerCase().indexOf("phone") !== -1) ||
+          (fieldElement.type === "tel");
+
+        if (isPhoneField && fieldElement.value && fieldElement.value.trim() !== "") {
+          const phoneValue = fieldElement.value.trim();
+          if (!this.validateUSPhoneNumber(phoneValue)) {
+            isValid = false;
+            this.showFieldError(
+              fieldElement,
+              "Please enter a valid US phone number (e.g., (123) 456-7890 or 123-456-7890)"
+            );
+          } else {
+            this.clearFieldError(fieldElement);
+          }
         }
 
         // HTML5 validation
@@ -442,6 +605,9 @@
     }
 
     const currentPageConfig = this.config.pages[this.currentPage - 1];
+
+    // Normalize all phone numbers to E.164 format before submission
+    this.normalizeAllPhoneNumbers();
 
     // Always save submission to database (regardless of webhook)
     this.saveSubmissionToDatabase();
