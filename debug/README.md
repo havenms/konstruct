@@ -1,6 +1,6 @@
 # Debug Tools Directory
 
-⚠️  **SECURITY NOTICE**: This directory contains debug and testing tools for the Konstruct Form Builder plugin.
+⚠️ **SECURITY NOTICE**: This directory contains debug and testing tools for the Konstruct Form Builder plugin.
 
 ## Important Security Information
 
@@ -11,17 +11,20 @@
 ## Available Debug Tools
 
 ### 1. Email Notification Debug (`form-builder-debug.php`)
+
 - Diagnoses email notification configuration issues
 - Tests WordPress email functionality
 - Checks plugin class loading
 - Validates form configurations
 
 ### 2. Quick Email Test (`quick-email-test.php`)
+
 - Basic email functionality testing
 - Plugin class existence verification
 - Simple email handler testing
 
 ### 3. Form Configuration Fix (`fix-existing-forms.php`)
+
 - One-time script to update existing forms
 - Adds missing notification configurations
 - Should be run once then removed
@@ -38,7 +41,7 @@
 ## Security Best Practices
 
 - Only use in development/staging environments
-- Remove entire `/debug/` directory before deploying to production  
+- Remove entire `/debug/` directory before deploying to production
 - Never leave debug tools accessible on live sites
 - Monitor access logs for unauthorized access attempts
 
