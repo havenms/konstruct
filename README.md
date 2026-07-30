@@ -79,7 +79,7 @@ Configured entirely on the form. There is no separate settings page — open a f
 
 1. In Zoho Flow, click **Create Flow** and name it
 2. Choose the **Webhook** trigger and click **Configure**
-3. Set the data format to **JSON**
+3. Note the **Data format** the trigger is set to — Form data or JSON
 4. Copy the generated URL
 5. Switch the flow **on**. A flow that is off rejects incoming data
 6. In WordPress, open your form, expand the **Zoho Flow** panel, tick **Send submissions to Zoho Flow**, paste the URL, and click **Test**
@@ -95,6 +95,7 @@ Zoho Flow
   ┌──────────────────────────────────────┐
   │ Sales Flow                           │
   │ https://flow.zoho.com/.../incoming…  │
+  │ Data format: [Form data ▾]           │
   │ [Test]                               │
   └──────────────────────────────────────┘
 
@@ -102,6 +103,8 @@ Zoho Flow
 ```
 
 Ticking the box reveals the fields straight away — there is nothing to click first. The name is optional and for your reference only; it is never sent to Zoho. **Test** delivers a sample payload immediately and reports the result inline.
+
+**Data format must match the trigger.** Zoho Flow only splits an incoming body into mappable fields when it matches the format configured on the Webhook trigger. A mismatch is silent: the request still returns success, but the trigger reports *"This trigger does not contain any input fields"* and every downstream mapping resolves to null. Form data is the default because it is what a trigger created without changing that setting expects.
 
 To stop delivery, either untick the box or clear the URL. An empty URL is ignored.
 

@@ -689,7 +689,7 @@ Best regards,
     if (!$rows.length) return;
 
     if (!formData.zoho_flow.flows.length) {
-      formData.zoho_flow.flows = [{ name: "", url: "" }];
+      formData.zoho_flow.flows = [{ name: "", url: "", format: "form" }];
     }
 
     const flow = formData.zoho_flow.flows[0];
@@ -706,6 +706,20 @@ Best regards,
       '<input type="text" class="zoho-flow-url" spellcheck="false" placeholder="https://flow.zoho.com/.../flow/webhook/incoming?zapikey=..." value="' +
         escapeHtml(flow.url || "") +
         '">'
+    );
+
+    $row.append(
+      '<label class="zoho-flow-format-label">Data format' +
+        '<select class="zoho-flow-format">' +
+        '<option value="form"' +
+        (flow.format === "json" ? "" : " selected") +
+        ">Form data</option>" +
+        '<option value="json"' +
+        (flow.format === "json" ? " selected" : "") +
+        ">JSON</option>" +
+        "</select>" +
+        "</label>" +
+        '<small class="zoho-flow-format-hint">Must match the <strong>Data format</strong> set on your flow\'s Webhook trigger. A mismatch still returns success, but Zoho sees no fields.</small>'
     );
 
     const $actions = $('<div class="zoho-flow-row-actions">');
@@ -1090,11 +1104,18 @@ Best regards,
       });
 
     $flowScope
+      .off("change", ".zoho-flow-format")
+      .on("change", ".zoho-flow-format", function () {
+        formData.zoho_flow.flows[0].format = $(this).val();
+      });
+
+    $flowScope
       .off("click", ".zoho-flow-test")
       .on("click", ".zoho-flow-test", function () {
         const $row = $(this).closest(".zoho-flow-row");
         const $result = $row.find(".zoho-flow-result");
         const url = $row.find(".zoho-flow-url").val().trim();
+        const format = $row.find(".zoho-flow-format").val();
         const $btn = $(this);
 
         $btn.prop("disabled", true).text("Testing...");
@@ -1106,7 +1127,7 @@ Best regards,
             "Content-Type": "application/json",
             "X-WP-Nonce": formBuilderAdmin.nonce,
           },
-          body: JSON.stringify({ url: url }),
+          body: JSON.stringify({ url: url, format: format }),
         })
           .then(function (response) {
             return response.json().then(function (data) {
@@ -1118,9 +1139,11 @@ Best regards,
             $result
               .addClass("is-success")
               .html(
-                "Delivered (HTTP " +
+                "Delivered as <strong>" +
+                  (data.format === "json" ? "JSON" : "form data") +
+                  "</strong> (HTTP " +
                   data.status_code +
-                  "). Open this flow in Zoho Flow and click <em>Test</em> to capture the payload for field mapping."
+                  "). Open this flow in Zoho Flow and click <em>Test</em> to capture the payload. If no fields appear there, the trigger expects the other format."
               )
               .show();
           })

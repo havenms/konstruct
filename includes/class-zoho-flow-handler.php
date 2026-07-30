@@ -1,10 +1,9 @@
 <?php
 /**
  * Zoho Flow Handler Class
- * Manages the site-wide Zoho Flow connection and payload delivery.
+ * Validates Zoho Flow webhook URLs and delivers form submissions to them.
  *
- * The connection is stored once for the whole site so that individual forms
- * only need a single on/off toggle. The webhook URL contains a secret
+ * Flows are configured on each form. The webhook URL contains a secret
  * (zapikey) and is therefore resolved server-side only - it is never exposed
  * to the browser.
  */
@@ -19,6 +18,14 @@ class Form_Builder_Zoho_Flow_Handler {
      * Option key holding the site-wide connection
      */
     const OPTION_KEY = 'form_builder_zoho_flow';
+
+    /**
+     * Body formats, matching the Data format setting on a Zoho Flow
+     * webhook trigger. Form data is the default because it is what a
+     * trigger created without changing that setting expects.
+     */
+    const FORMAT_FORM = 'form';
+    const FORMAT_JSON = 'json';
 
     /**
      * Zoho Flow hosts across all data centres
@@ -105,7 +112,10 @@ class Form_Builder_Zoho_Flow_Handler {
     }
 
     /**
-
+     * Validate that a URL is a usable Zoho Flow incoming webhook
+     *
+     * @param string $url
+     * @return true|WP_Error
      */
     public function validate_url($url) {
         if (!filter_var($url, FILTER_VALIDATE_URL)) {
@@ -228,13 +238,14 @@ class Form_Builder_Zoho_Flow_Handler {
             $seen[$flow['url']] = true;
 
             $resolved[] = array(
-                'id'   => 'flow_' . $index,
-                'name' => $flow['name'] !== '' ? $flow['name'] : sprintf(
+                'id'     => 'flow_' . $index,
+                'name'   => $flow['name'] !== '' ? $flow['name'] : sprintf(
                     /* translators: %d: position of the flow on the form */
                     __('Flow %d', 'form-builder-microsaas'),
                     $index + 1
                 ),
-                'url'  => $flow['url'],
+                'url'    => $flow['url'],
+                'format' => $flow['format'],
             );
         }
 
@@ -246,9 +257,10 @@ class Form_Builder_Zoho_Flow_Handler {
         $legacy = $this->get_legacy_url();
         if ($legacy !== '' && $this->validate_url($legacy) === true) {
             return array(array(
-                'id'   => 'legacy',
-                'name' => __('Site connection', 'form-builder-microsaas'),
-                'url'  => $legacy,
+                'id'     => 'legacy',
+                'name'   => __('Site connection', 'form-builder-microsaas'),
+                'url'    => $legacy,
+                'format' => self::FORMAT_FORM,
             ));
         }
 
@@ -286,8 +298,9 @@ class Form_Builder_Zoho_Flow_Handler {
                 }
 
                 $flows[] = array(
-                    'name' => isset($flow['name']) ? sanitize_text_field($flow['name']) : '',
-                    'url'  => trim((string) $flow['url']),
+                    'name'   => isset($flow['name']) ? sanitize_text_field($flow['name']) : '',
+                    'url'    => trim((string) $flow['url']),
+                    'format' => $this->normalise_format(isset($flow['format']) ? $flow['format'] : ''),
                 );
             }
         }
@@ -295,8 +308,9 @@ class Form_Builder_Zoho_Flow_Handler {
         // Forms saved with the earlier single override URL
         if (empty($flows) && !empty($form_config['zoho_flow']['override_url'])) {
             $flows[] = array(
-                'name' => '',
-                'url'  => trim((string) $form_config['zoho_flow']['override_url']),
+                'name'   => '',
+                'url'    => trim((string) $form_config['zoho_flow']['override_url']),
+                'format' => self::FORMAT_FORM,
             );
         }
 
@@ -442,6 +456,18 @@ class Form_Builder_Zoho_Flow_Handler {
     }
 
     /**
+     * Coerce a stored format value to one this class understands
+     *
+     * @param string $format
+     * @return string
+     */
+    public function normalise_format($format) {
+        return strtolower((string) $format) === self::FORMAT_JSON
+            ? self::FORMAT_JSON
+            : self::FORMAT_FORM;
+    }
+
+    /**
      * Normalise a field name into a safe top-level payload key
      *
      * @param string $key
@@ -460,16 +486,60 @@ class Form_Builder_Zoho_Flow_Handler {
      * @param array  $payload
      * @return array{status_code:?int,body:string,success:bool,error:?string}
      */
-    public function send($url, $payload) {
-        $response = wp_remote_post($url, array(
-            'headers'   => array(
-                'Content-Type' => 'application/json',
-                'Accept'       => 'application/json',
-            ),
-            'body'      => wp_json_encode($payload),
+    /**
+     * Flatten a payload into values safe for form encoding.
+     *
+     * PHP encodes true as "1" but false as an empty string, which would make a
+     * false flag indistinguishable from a blank field once it reaches Zoho.
+     * Booleans are written explicitly instead.
+     *
+     * @param array $payload
+     * @return array
+     */
+    private function prepare_form_body($payload) {
+        $body = array();
+
+        foreach ($payload as $key => $value) {
+            if (is_bool($value)) {
+                $body[$key] = $value ? '1' : '0';
+                continue;
+            }
+
+            if (is_null($value)) {
+                $body[$key] = '';
+                continue;
+            }
+
+            $body[$key] = is_scalar($value) ? (string) $value : wp_json_encode($value);
+        }
+
+        return $body;
+    }
+
+    public function send($url, $payload, $format = self::FORMAT_FORM) {
+        // The body must match the format configured on the Zoho Flow trigger.
+        // A mismatch is not an error either side reports: the request succeeds
+        // with a 200, but the trigger cannot split the body into fields, so
+        // every mapping downstream resolves to null.
+        if ($format === self::FORMAT_JSON) {
+            $args = array(
+                'headers' => array(
+                    'Content-Type' => 'application/json',
+                    'Accept'       => 'application/json',
+                ),
+                'body'    => wp_json_encode($payload),
+            );
+        } else {
+            // Passing an array lets WordPress set the urlencoded content type
+            $args = array(
+                'body' => $this->prepare_form_body($payload),
+            );
+        }
+
+        $response = wp_remote_post($url, array_merge($args, array(
             'timeout'   => 20,
             'sslverify' => true,
-        ));
+        )));
 
         if (is_wp_error($response)) {
             return array(
@@ -529,7 +599,8 @@ class Form_Builder_Zoho_Flow_Handler {
 
         foreach ($connections as $connection) {
             $start    = microtime(true);
-            $result   = $this->send($connection['url'], $payload);
+            $format   = isset($connection['format']) ? $connection['format'] : self::FORMAT_FORM;
+            $result   = $this->send($connection['url'], $payload, $format);
             $duration = round((microtime(true) - $start) * 1000);
 
             $this->log_delivery($form, $page_number, $connection['url'], $result, $duration, $submission_uuid);
@@ -537,6 +608,7 @@ class Form_Builder_Zoho_Flow_Handler {
             $entry = array(
                 'connection_id'   => $connection['id'],
                 'connection_name' => $connection['name'],
+                'format'          => $format,
                 'sent'            => empty($result['error']) && !empty($result['success']),
                 'status_code'     => $result['status_code'],
             );
@@ -606,8 +678,9 @@ class Form_Builder_Zoho_Flow_Handler {
      * @param string $url Optional URL to test; defaults to the stored connection
      * @return array|WP_Error
      */
-    public function test_connection($url = '') {
-        $url = trim((string) $url);
+    public function test_connection($url = '', $format = self::FORMAT_FORM) {
+        $url    = trim((string) $url);
+        $format = $this->normalise_format($format);
 
         if ($url === '') {
             $url = $this->get_legacy_url();
@@ -641,7 +714,7 @@ class Form_Builder_Zoho_Flow_Handler {
             'message'         => __('This is a test payload sent from Konstruct Form Builder.', 'form-builder-microsaas'),
         );
 
-        $result = $this->send($url, $payload);
+        $result = $this->send($url, $payload, $format);
 
         if (!empty($result['error'])) {
             return new WP_Error(
@@ -668,6 +741,7 @@ class Form_Builder_Zoho_Flow_Handler {
         return array(
             'success'     => true,
             'status_code' => $result['status_code'],
+            'format'      => $format,
             'payload'     => $payload,
         );
     }

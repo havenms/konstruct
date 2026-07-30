@@ -491,9 +491,10 @@ class Form_Builder_REST_API {
     public function test_zoho_connection($request) {
         $params = $request->get_json_params();
         $url    = isset($params['url']) ? $params['url'] : '';
+        $format = isset($params['format']) ? $params['format'] : '';
 
         $zoho   = new Form_Builder_Zoho_Flow_Handler();
-        $result = $zoho->test_connection($url);
+        $result = $zoho->test_connection($url, $format);
 
         if (is_wp_error($result)) {
             return new WP_Error(
