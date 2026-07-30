@@ -101,6 +101,7 @@ $field_types = $builder->get_field_types();
                         <th><?php _e('Form Name', 'form-builder-microsaas'); ?></th>
                         <th><?php _e('Slug', 'form-builder-microsaas'); ?></th>
                         <th><?php _e('Pages', 'form-builder-microsaas'); ?></th>
+                        <th><?php _e('Fields', 'form-builder-microsaas'); ?></th>
                         <th><?php _e('Updated', 'form-builder-microsaas'); ?></th>
                         <th><?php _e('Actions', 'form-builder-microsaas'); ?></th>
                     </tr>
