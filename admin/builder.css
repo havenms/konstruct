@@ -1366,3 +1366,18 @@
     color: #757575;
     font-size: 11px;
 }
+
+/* Back link out of field properties */
+.field-props-back {
+  margin-bottom: var(--spacing-md);
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.field-props-back:hover {
+  text-decoration: underline;
+}

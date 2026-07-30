@@ -534,24 +534,46 @@ class Form_Builder_REST_API {
             return new WP_Error('form_not_found', 'Form not found', array('status' => 404));
         }
 
-        // Prefer the stored submission over anything supplied by the client so
-        // the payload reflects what was actually saved for this UUID.
-        $form_data = array();
+        // Combine both sources rather than relying on either alone. The stored
+        // submission carries enrichment the client cannot know about (file
+        // upload URLs), while the request carries values that may not have
+        // reached the database yet - a step send fires before the submission
+        // row exists, and a failed or racing insert would otherwise leave the
+        // payload with metadata and no fields.
+        $client_data = (isset($params['formData']) && is_array($params['formData']))
+            ? $params['formData']
+            : array();
+
+        $stored_data = array();
         if (!empty($uuid)) {
             $submission = $storage->get_submission_by_uuid($uuid);
             if ($submission && !empty($submission['form_data'])) {
-                $form_data = is_array($submission['form_data'])
+                $decoded = is_array($submission['form_data'])
                     ? $submission['form_data']
                     : json_decode($submission['form_data'], true);
+
+                if (is_array($decoded)) {
+                    $stored_data = $decoded;
+                }
             }
         }
 
-        if (empty($form_data) && isset($params['formData']) && is_array($params['formData'])) {
-            $form_data = $params['formData'];
-        }
+        // Stored values win on conflict, since they are what was persisted.
+        // The union operator rather than array_merge: array_merge renumbers
+        // numeric-looking keys, which would rename a field called "123".
+        $form_data = $stored_data + $client_data;
 
-        if (!is_array($form_data)) {
-            $form_data = array();
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log(sprintf(
+                'Form Builder: Zoho send form=%d page=%d final=%s client_fields=%d stored_fields=%d merged_fields=%d uuid=%s',
+                $form_id,
+                $page_number,
+                $is_final ? 'yes' : 'no',
+                count($client_data),
+                count($stored_data),
+                count($form_data),
+                $uuid === '' ? '(none)' : $uuid
+            ));
         }
 
         // Reject oversized payloads the same way the webhook handler does
