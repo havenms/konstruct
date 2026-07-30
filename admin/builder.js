@@ -979,7 +979,6 @@ Best regards,
     );
 
     $zohoConfig.append($flowList);
-    renderZohoFlowRows();
 
     $zohoConfig.append(
       '<label><input type="checkbox" id="zoho-send-on-steps" ' +
@@ -1020,6 +1019,10 @@ Best regards,
 
     // Populate recipient field dropdowns with email fields from all pages
     populateRecipientFields();
+
+    // Draw the Zoho flow rows now the panel is in the document.
+    // This queries the DOM, so it cannot run while the panel is detached.
+    renderZohoFlowRows();
 
     // Accordion toggle functionality
     $(".accordion-header")
