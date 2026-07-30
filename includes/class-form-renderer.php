@@ -402,13 +402,21 @@ class Form_Builder_Renderer {
             'nonce' => wp_create_nonce('wp_rest'),
         ));
         
+        // Remove secrets before the configuration is printed into the page.
+        // The Zoho Flow override URL carries a zapikey and must stay server-side.
+        $public_config = $form['form_config'];
+        if (class_exists('Form_Builder_Zoho_Flow_Handler')) {
+            $zoho = new Form_Builder_Zoho_Flow_Handler();
+            $public_config = $zoho->scrub_config_for_frontend($public_config);
+        }
+
         // Localize script with form data using instance ID
         wp_add_inline_script('form-builder-frontend',
             'window.formBuilderData = window.formBuilderData || {}; ' .
             'window.formBuilderData["' . esc_js($form_instance_id) . '"] = ' . json_encode(array(
                 'formId' => $form['id'],
                 'formSlug' => $form['form_slug'],
-                'formConfig' => $form['form_config'],
+                'formConfig' => $public_config,
                 'submissionUuid' => $this->generate_uuid(),
             )) . ';',
             'after'

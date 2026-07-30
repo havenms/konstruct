@@ -50,6 +50,15 @@ class Form_Builder_Admin_Interface {
             'form-builder-submissions',
             array($this, 'render_submissions_page')
         );
+
+        add_submenu_page(
+            'form-builder',
+            __('Zoho Flow Connection', 'form-builder-microsaas'),
+            __('Zoho Flow', 'form-builder-microsaas'),
+            'manage_options',
+            'form-builder-zoho-flow',
+            array($this, 'render_zoho_flow_page')
+        );
     }
     
     /**
@@ -68,6 +77,14 @@ class Form_Builder_Admin_Interface {
         require_once FORM_BUILDER_PLUGIN_DIR . 'admin/submissions.php';
     }
     
+    /**
+     * Render the Zoho Flow connection page
+     */
+    public function render_zoho_flow_page() {
+        $this->send_no_cache_headers();
+        require_once FORM_BUILDER_PLUGIN_DIR . 'admin/zoho-flow.php';
+    }
+
     /**
      * Send no-cache headers for admin pages to help with LiteSpeed Cache and other caching systems
      */

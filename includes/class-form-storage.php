@@ -255,6 +255,33 @@ class Form_Builder_Storage {
     }
     
     /**
+     * Get a single submission by its UUID
+     *
+     * @param string $submission_uuid
+     * @return array|null Row with form_data decoded, or null when not found
+     */
+    public function get_submission_by_uuid($submission_uuid) {
+        global $wpdb;
+
+        $submission = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT SQL_NO_CACHE * FROM {$this->submissions_table} WHERE submission_uuid = %s",
+                sanitize_text_field($submission_uuid)
+            ),
+            ARRAY_A
+        );
+
+        if ($submission && !empty($submission['form_data'])) {
+            $decoded = json_decode($submission['form_data'], true);
+            if (is_array($decoded)) {
+                $submission['form_data'] = $decoded;
+            }
+        }
+
+        return $submission;
+    }
+
+    /**
      * Log webhook call
      */
     public function log_webhook($submission_id, $form_id, $page_number, $webhook_url, $status_code = null, $response_ms = null, $error_message = null) {

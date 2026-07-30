@@ -73,6 +73,11 @@ Submission ID: {{submission_uuid}}
 Best regards,
 {{site_name}}'
                 )
+            ),
+            'zoho_flow' => array(
+                'enabled' => false,
+                'override_url' => '',
+                'send_on_steps' => false
             )
         );
     }
@@ -120,7 +125,16 @@ Best regards,
                 }
             }
         }
-        
+
+        // Validate the per-form Zoho Flow override when one is supplied
+        if (!empty($config['zoho_flow']['enabled']) && !empty($config['zoho_flow']['override_url'])) {
+            $zoho = new Form_Builder_Zoho_Flow_Handler();
+            $validation = $zoho->validate_url($config['zoho_flow']['override_url']);
+            if (is_wp_error($validation)) {
+                $errors[] = $validation->get_error_message();
+            }
+        }
+
         return $errors;
     }
     

@@ -95,6 +95,36 @@ class Form_Builder_REST_API {
             'permission_callback' => array($this, 'check_admin_permission'),
         ));
 
+        // Zoho Flow: read the site-wide connection (admins only)
+        register_rest_route('form-builder/v1', '/zoho-flow/connection', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'get_zoho_connection'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
+
+        // Zoho Flow: save the site-wide connection (admins only)
+        register_rest_route('form-builder/v1', '/zoho-flow/connection', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'save_zoho_connection'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
+
+        // Zoho Flow: send a sample payload (admins only)
+        register_rest_route('form-builder/v1', '/zoho-flow/test', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'test_zoho_connection'),
+            'permission_callback' => array($this, 'check_admin_permission'),
+        ));
+
+        // Zoho Flow: deliver a submission. Public because visitors trigger it,
+        // but the destination URL is resolved server-side and never accepted
+        // from the request body.
+        register_rest_route('form-builder/v1', '/zoho-flow/send', array(
+            'methods' => 'POST',
+            'callback' => array($this, 'send_to_zoho_flow'),
+            'permission_callback' => '__return_true',
+        ));
+
         // Protected file download route (admins only) - using secure handler
         register_rest_route('form-builder/v1', '/file', array(
             'methods' => 'GET',
@@ -469,6 +499,131 @@ class Form_Builder_REST_API {
         ), 200);
     }
     
+    /**
+     * Return the site-wide Zoho Flow connection status.
+     * The URL is masked so the zapikey is never echoed back in full.
+     */
+    public function get_zoho_connection($request) {
+        $zoho       = new Form_Builder_Zoho_Flow_Handler();
+        $connection = $zoho->get_connection();
+
+        return new WP_REST_Response(array(
+            'connected'    => $zoho->is_connected(),
+            'masked_url'   => $zoho->mask_url($connection['url']),
+            'region'       => $zoho->get_region_label($connection['url']),
+            'connected_at' => $connection['connected_at'],
+        ), 200);
+    }
+
+    /**
+     * Save the site-wide Zoho Flow connection
+     */
+    public function save_zoho_connection($request) {
+        $params = $request->get_json_params();
+        $url    = isset($params['url']) ? $params['url'] : '';
+
+        $zoho   = new Form_Builder_Zoho_Flow_Handler();
+        $result = $zoho->save_connection($url);
+
+        if (is_wp_error($result)) {
+            return new WP_Error(
+                $result->get_error_code(),
+                $result->get_error_message(),
+                array('status' => 400)
+            );
+        }
+
+        $connection = $zoho->get_connection();
+
+        return new WP_REST_Response(array(
+            'success'      => true,
+            'connected'    => $zoho->is_connected(),
+            'masked_url'   => $zoho->mask_url($connection['url']),
+            'region'       => $zoho->get_region_label($connection['url']),
+            'connected_at' => $connection['connected_at'],
+        ), 200);
+    }
+
+    /**
+     * Send a sample payload to Zoho Flow so field mapping can be set up
+     */
+    public function test_zoho_connection($request) {
+        $params = $request->get_json_params();
+        $url    = isset($params['url']) ? $params['url'] : '';
+
+        $zoho   = new Form_Builder_Zoho_Flow_Handler();
+        $result = $zoho->test_connection($url);
+
+        if (is_wp_error($result)) {
+            return new WP_Error(
+                $result->get_error_code(),
+                $result->get_error_message(),
+                array('status' => 400)
+            );
+        }
+
+        return new WP_REST_Response($result, 200);
+    }
+
+    /**
+     * Deliver a submission to Zoho Flow.
+     *
+     * The request only identifies the form; the destination URL is looked up
+     * server-side from the saved connection so the zapikey is never exposed to
+     * the browser and this endpoint cannot be used to post to arbitrary hosts.
+     */
+    public function send_to_zoho_flow($request) {
+        $params = $request->get_json_params();
+
+        if (empty($params['form_id'])) {
+            return new WP_Error('missing_params', 'form_id is required', array('status' => 400));
+        }
+
+        $form_id     = intval($params['form_id']);
+        $page_number = isset($params['page_number']) ? intval($params['page_number']) : 1;
+        $is_final    = !empty($params['is_final']);
+        $uuid        = isset($params['submission_uuid'])
+            ? sanitize_text_field($params['submission_uuid'])
+            : '';
+
+        $storage = new Form_Builder_Storage();
+        $form    = $storage->get_form_by_id($form_id);
+
+        if (!$form) {
+            return new WP_Error('form_not_found', 'Form not found', array('status' => 404));
+        }
+
+        // Prefer the stored submission over anything supplied by the client so
+        // the payload reflects what was actually saved for this UUID.
+        $form_data = array();
+        if (!empty($uuid)) {
+            $submission = $storage->get_submission_by_uuid($uuid);
+            if ($submission && !empty($submission['form_data'])) {
+                $form_data = is_array($submission['form_data'])
+                    ? $submission['form_data']
+                    : json_decode($submission['form_data'], true);
+            }
+        }
+
+        if (empty($form_data) && isset($params['formData']) && is_array($params['formData'])) {
+            $form_data = $params['formData'];
+        }
+
+        if (!is_array($form_data)) {
+            $form_data = array();
+        }
+
+        // Reject oversized payloads the same way the webhook handler does
+        if (strlen(wp_json_encode($form_data)) > 1000000) {
+            return new WP_Error('payload_too_large', 'Form data payload too large', array('status' => 413));
+        }
+
+        $zoho   = new Form_Builder_Zoho_Flow_Handler();
+        $result = $zoho->deliver($form, $page_number, $form_data, $uuid, $is_final);
+
+        return new WP_REST_Response($result, 200);
+    }
+
     /**
      * Generate UUID
      */

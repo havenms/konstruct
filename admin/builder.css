@@ -1277,3 +1277,172 @@
     opacity: 1;
   }
 }
+
+/* ==========================================================================
+   Zoho Flow
+   ========================================================================== */
+
+.form-builder-zoho-intro {
+    max-width: 640px;
+    font-size: 14px;
+    color: #50575e;
+}
+
+.form-builder-zoho-card {
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+    padding: 20px;
+    margin: 0 0 20px;
+    max-width: 720px;
+}
+
+.form-builder-zoho-heading {
+    margin: 0 0 12px;
+    font-size: 15px;
+}
+
+.form-builder-zoho-status-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.form-builder-zoho-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.form-builder-zoho-badge::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.form-builder-zoho-badge.is-connected {
+    background: #edfaef;
+    color: #007017;
+}
+
+.form-builder-zoho-badge.is-disconnected {
+    background: #f6f7f7;
+    color: #757575;
+}
+
+.form-builder-zoho-region {
+    font-size: 12px;
+    color: #757575;
+}
+
+.form-builder-zoho-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.form-builder-zoho-input {
+    width: 100%;
+    font-family: Menlo, Consolas, monospace;
+    font-size: 12px;
+}
+
+.form-builder-zoho-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.form-builder-zoho-actions .spinner {
+    float: none;
+    margin: 0;
+}
+
+.form-builder-zoho-message {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: 4px;
+    border-left: 4px solid transparent;
+    font-size: 13px;
+}
+
+.form-builder-zoho-message.is-success {
+    background: #edfaef;
+    border-left-color: #00a32a;
+    color: #14421c;
+}
+
+.form-builder-zoho-message.is-error {
+    background: #fcf0f1;
+    border-left-color: #d63638;
+    color: #8a1f21;
+}
+
+.form-builder-zoho-message pre,
+.form-builder-zoho-payload {
+    background: #1d2327;
+    color: #e6e8ea;
+    padding: 14px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    margin: 12px 0 0;
+}
+
+.form-builder-zoho-steps {
+    margin: 0 0 12px 18px;
+    line-height: 1.9;
+    font-size: 13px;
+}
+
+/* Inline status shown inside the form builder's Zoho accordion */
+.zoho-inline-status {
+    margin: 0 0 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.zoho-inline-status.is-connected {
+    color: #007017;
+}
+
+.zoho-inline-status.is-disconnected {
+    color: #996800;
+}
+
+.zoho-config {
+    margin-top: 10px;
+    padding-left: 22px;
+    border-left: 2px solid #f0f0f1;
+}
+
+.zoho-advanced {
+    margin-top: 10px;
+}
+
+.zoho-advanced summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: #50575e;
+    user-select: none;
+}
+
+.zoho-advanced label {
+    display: block;
+    margin-top: 10px;
+}
+
+.zoho-advanced input {
+    width: 100%;
+    font-family: Menlo, Consolas, monospace;
+    font-size: 11px;
+}

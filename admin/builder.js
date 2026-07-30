@@ -355,6 +355,16 @@ Best regards,
       };
     }
 
+    // Initialize Zoho Flow settings if not present (backward compatibility
+    // with forms saved before the integration existed)
+    if (!formData.zoho_flow) {
+      formData.zoho_flow = {
+        enabled: false,
+        override_url: "",
+        send_on_steps: false,
+      };
+    }
+
     // Ensure all notification properties exist (for backward compatibility)
     if (
       formData.notifications.step_notifications &&
@@ -868,6 +878,75 @@ Best regards,
     $emailAccordion.append($emailContent);
     $accordions.append($emailAccordion);
 
+    // Zoho Flow Accordion
+    const $zohoAccordion = $('<div class="accordion-item">');
+    const $zohoHeader = $(
+      '<button type="button" class="accordion-header" aria-expanded="false">'
+    );
+    $zohoHeader.append('<span class="accordion-title">Zoho Flow</span>');
+    $zohoHeader.append(
+      '<svg class="accordion-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L1 4H11L6 9Z" fill="currentColor"/></svg>'
+    );
+    $zohoAccordion.append($zohoHeader);
+    const $zohoContent = $(
+      '<div class="accordion-content" style="display: none;">'
+    );
+
+    const $zoho = $('<div class="property-group">');
+    const zohoConnected = !!(
+      typeof formBuilderAdmin !== "undefined" && formBuilderAdmin.zohoConnected
+    );
+    const zohoSettingsUrl =
+      typeof formBuilderAdmin !== "undefined"
+        ? formBuilderAdmin.zohoSettingsUrl
+        : "#";
+
+    // Connection status comes from the site-wide setting
+    $zoho.append(
+      '<p class="zoho-inline-status ' +
+        (zohoConnected ? "is-connected" : "is-disconnected") +
+        '">' +
+        (zohoConnected
+          ? "● Connected to Zoho Flow"
+          : '○ Not connected — <a href="' +
+            zohoSettingsUrl +
+            '">set up the connection</a>') +
+        "</p>"
+    );
+
+    $zoho.append(
+      '<label><input type="checkbox" id="zoho-enabled" ' +
+        (formData.zoho_flow.enabled ? "checked" : "") +
+        "> <span>Send submissions to Zoho Flow</span></label>"
+    );
+
+    const $zohoConfig = $(
+      '<div class="zoho-config" style="' +
+        (formData.zoho_flow.enabled ? "" : "display:none") +
+        '">'
+    );
+
+    $zohoConfig.append(
+      '<label><input type="checkbox" id="zoho-send-on-steps" ' +
+        (formData.zoho_flow.send_on_steps ? "checked" : "") +
+        "> <span>Also send after each page (captures partial leads)</span></label>"
+    );
+
+    $zohoConfig.append(
+      '<details class="zoho-advanced"><summary>Advanced</summary>' +
+        '<label>Use a different webhook URL for this form:<br>' +
+        '<input type="text" id="zoho-override-url" class="regular-text" placeholder="Leave blank to use the site connection" value="' +
+        escapeHtml(formData.zoho_flow.override_url || "") +
+        '"></label>' +
+        "<small>Only needed if this form should reach a different flow.</small>" +
+        "</details>"
+    );
+
+    $zoho.append($zohoConfig);
+    $zohoContent.append($zoho);
+    $zohoAccordion.append($zohoContent);
+    $accordions.append($zohoAccordion);
+
     // Custom JavaScript Accordion
     const $jsAccordion = $('<div class="accordion-item">');
     const $jsHeader = $(
@@ -930,6 +1009,29 @@ Best regards,
       .off("input")
       .on("input", function () {
         page.webhook.url = $(this).val();
+      });
+
+    // Bind Zoho Flow events
+    $("#zoho-enabled")
+      .off("change")
+      .on("change", function () {
+        formData.zoho_flow.enabled = $(this).is(":checked");
+        $(this)
+          .closest(".property-group")
+          .find(".zoho-config")
+          .toggle($(this).is(":checked"));
+      });
+
+    $("#zoho-send-on-steps")
+      .off("change")
+      .on("change", function () {
+        formData.zoho_flow.send_on_steps = $(this).is(":checked");
+      });
+
+    $("#zoho-override-url")
+      .off("input")
+      .on("input", function () {
+        formData.zoho_flow.override_url = $(this).val().trim();
       });
 
     // Bind email notification events

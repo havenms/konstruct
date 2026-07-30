@@ -498,6 +498,9 @@
     // Send step notification email (independent of webhooks)
     this.sendStepNotification(this.currentPage);
 
+    // Deliver this step to Zoho Flow when step delivery is enabled
+    this.sendToZohoFlow(this.currentPage, false);
+
     // Execute custom JS if present
     if (currentPageConfig.customJS && currentPageConfig.customJS.trim()) {
       // Add a small delay to ensure other scripts (like Facebook Pixel) are ready
@@ -610,7 +613,12 @@
     this.normalizeAllPhoneNumbers();
 
     // Always save submission to database (regardless of webhook)
-    this.saveSubmissionToDatabase();
+    const self = this;
+    this.saveSubmissionToDatabase().then(function () {
+      // Deliver to Zoho Flow once the submission exists server-side so the
+      // payload is built from stored data rather than client input
+      self.sendToZohoFlow(self.currentPage, true);
+    });
 
     // Send webhook if enabled for last page
     if (
@@ -643,6 +651,8 @@
 
     // Build multipart FormData to include actual files
     const fd = new FormData();
+    // Returns a promise so callers can act once the submission exists
+    // server-side (the Zoho Flow delivery relies on this).
     fd.append("form_id", this.formId);
     if (this.submissionUuid) fd.append("submission_uuid", this.submissionUuid);
 
@@ -658,7 +668,7 @@
       }
     });
 
-    fetch(formBuilderFrontend.apiUrl + "submissions", {
+    return fetch(formBuilderFrontend.apiUrl + "submissions", {
       method: "POST",
       headers: {
         "X-WP-Nonce": formBuilderFrontend.nonce,
@@ -676,6 +686,43 @@
       .catch(function (error) {
         console.error("Database save error:", error);
       });
+  };
+
+  /**
+   * Ask the server to deliver this submission to Zoho Flow.
+   * Only the form identity is sent - the destination URL lives server-side.
+   */
+  FormBuilderInstance.prototype.sendToZohoFlow = function (
+    pageNumber,
+    isFinal
+  ) {
+    const zoho = this.config.zoho_flow;
+
+    if (!zoho || !zoho.enabled) {
+      return;
+    }
+
+    // Intermediate pages only send when the form opts into step delivery
+    if (!isFinal && !zoho.send_on_steps) {
+      return;
+    }
+
+    fetch(formBuilderFrontend.apiUrl + "zoho-flow/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-WP-Nonce": formBuilderFrontend.nonce,
+      },
+      body: JSON.stringify({
+        form_id: parseInt(this.formId),
+        page_number: pageNumber,
+        is_final: !!isFinal,
+        submission_uuid: this.submissionUuid,
+        formData: this.formData,
+      }),
+    }).catch(function (error) {
+      console.error("Zoho Flow error:", error);
+    });
   };
 
   FormBuilderInstance.prototype.sendWebhook = function (
