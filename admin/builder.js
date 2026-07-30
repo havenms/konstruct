@@ -675,27 +675,26 @@ Best regards,
    * Render page properties
    */
   /**
-   * Redraw only the Zoho flow rows.
-   * Deliberately not a full property-panel re-render: that would collapse
-   * the accordion the user is working inside.
+   * Draw the Zoho flow fields.
+   *
+   * A form always has exactly one flow, so the fields are shown straight away
+   * with nothing to click first. Clearing the URL is how you switch delivery
+   * off; an empty URL is ignored server-side.
+   *
+   * Deliberately not a full property-panel re-render: that would collapse the
+   * accordion the user is working inside.
    */
   function renderZohoFlowRows() {
     const $rows = $(".zoho-flow-rows");
     if (!$rows.length) return;
 
-    const flows = formData.zoho_flow.flows;
-    $rows.empty();
-
-    // A single flow covers virtually every case; branching is done inside
-    // Zoho Flow itself with a Decision box.
-    if (!flows.length) {
-      $rows.append(
-        '<button type="button" class="button button-small zoho-flow-add">Add Flow</button>'
-      );
-      return;
+    if (!formData.zoho_flow.flows.length) {
+      formData.zoho_flow.flows = [{ name: "", url: "" }];
     }
 
-    const flow = flows[0];
+    const flow = formData.zoho_flow.flows[0];
+    $rows.empty();
+
     const $row = $('<div class="zoho-flow-row" data-index="0">');
 
     $row.append(
@@ -712,9 +711,6 @@ Best regards,
     const $actions = $('<div class="zoho-flow-row-actions">');
     $actions.append(
       '<button type="button" class="button button-small zoho-flow-test">Test</button>'
-    );
-    $actions.append(
-      '<button type="button" class="button button-small button-link-delete zoho-flow-remove">Remove</button>'
     );
     $row.append($actions);
     $row.append('<div class="zoho-flow-result" style="display:none;"></div>');
@@ -1091,21 +1087,6 @@ Best regards,
       .off("input", ".zoho-flow-url")
       .on("input", ".zoho-flow-url", function () {
         formData.zoho_flow.flows[0].url = $(this).val().trim();
-      });
-
-    $flowScope
-      .off("click", ".zoho-flow-add")
-      .on("click", ".zoho-flow-add", function () {
-        formData.zoho_flow.flows = [{ name: "", url: "" }];
-        renderZohoFlowRows();
-        $(".zoho-flow-url").trigger("focus");
-      });
-
-    $flowScope
-      .off("click", ".zoho-flow-remove")
-      .on("click", ".zoho-flow-remove", function () {
-        formData.zoho_flow.flows = [];
-        renderZohoFlowRows();
       });
 
     $flowScope

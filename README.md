@@ -95,13 +95,15 @@ Zoho Flow
   ┌──────────────────────────────────────┐
   │ Sales Flow                           │
   │ https://flow.zoho.com/.../incoming…  │
-  │ [Test]  [Remove]                     │
+  │ [Test]                               │
   └──────────────────────────────────────┘
 
   ☐ Also send after each page
 ```
 
-The name is optional and for your reference only — it is never sent to Zoho. **Test** delivers a sample payload immediately and reports the result inline.
+Ticking the box reveals the fields straight away — there is nothing to click first. The name is optional and for your reference only; it is never sent to Zoho. **Test** delivers a sample payload immediately and reports the result inline.
+
+To stop delivery, either untick the box or clear the URL. An empty URL is ignored.
 
 **One flow per form**
 
