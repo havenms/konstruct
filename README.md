@@ -97,18 +97,15 @@ Zoho Flow
   │ https://flow.zoho.com/.../incoming…  │
   │ [Test]  [Remove]                     │
   └──────────────────────────────────────┘
-  + Add another flow
 
   ☐ Also send after each page
 ```
 
-Each row has an optional name (for your reference only — it is never sent to Zoho) and the webhook URL. **Test** delivers a sample payload immediately and reports the result inline.
+The name is optional and for your reference only — it is never sent to Zoho. **Test** delivers a sample payload immediately and reports the result inline.
 
-**Sending to several flows**
+**One flow per form**
 
-Click **Add another flow** and paste a second URL. The form then delivers to every flow listed. Deliveries are independent: the payload is built once and reused so each flow receives an identical body, one flow failing does not stop the others, and each attempt gets its own row in the webhook log.
-
-A URL listed twice is only sent once, and an invalid URL is skipped rather than failing the whole delivery.
+A form sends to one flow. That is not a limitation in practice: a single flow can run as many actions as you need — create a CRM lead, send an email, post to Slack, write a row to Sheets — and a **Decision** box lets it branch on any field. Build that logic inside Zoho Flow, where the tooling is.
 
 **One flow for many forms**
 

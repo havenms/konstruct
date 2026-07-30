@@ -674,6 +674,54 @@ Best regards,
   /**
    * Render page properties
    */
+  /**
+   * Redraw only the Zoho flow rows.
+   * Deliberately not a full property-panel re-render: that would collapse
+   * the accordion the user is working inside.
+   */
+  function renderZohoFlowRows() {
+    const $rows = $(".zoho-flow-rows");
+    if (!$rows.length) return;
+
+    const flows = formData.zoho_flow.flows;
+    $rows.empty();
+
+    // A single flow covers virtually every case; branching is done inside
+    // Zoho Flow itself with a Decision box.
+    if (!flows.length) {
+      $rows.append(
+        '<button type="button" class="button button-small zoho-flow-add">Add Flow</button>'
+      );
+      return;
+    }
+
+    const flow = flows[0];
+    const $row = $('<div class="zoho-flow-row" data-index="0">');
+
+    $row.append(
+      '<input type="text" class="zoho-flow-name" placeholder="Name (optional, e.g. Sales Flow)" value="' +
+        escapeHtml(flow.name || "") +
+        '">'
+    );
+    $row.append(
+      '<input type="text" class="zoho-flow-url" spellcheck="false" placeholder="https://flow.zoho.com/.../flow/webhook/incoming?zapikey=..." value="' +
+        escapeHtml(flow.url || "") +
+        '">'
+    );
+
+    const $actions = $('<div class="zoho-flow-row-actions">');
+    $actions.append(
+      '<button type="button" class="button button-small zoho-flow-test">Test</button>'
+    );
+    $actions.append(
+      '<button type="button" class="button button-small button-link-delete zoho-flow-remove">Remove</button>'
+    );
+    $row.append($actions);
+    $row.append('<div class="zoho-flow-result" style="display:none;"></div>');
+
+    $rows.append($row);
+  }
+
   function renderPageProperties() {
     if (currentFieldIndex === null) {
       renderPageSettings();
@@ -925,55 +973,13 @@ Best regards,
 
     const $flowList = $('<div class="zoho-flow-list">');
     $flowList.append("<h4>Deliver to</h4>");
-
-    function renderFlowRows() {
-      $flowList.find(".zoho-flow-row").remove();
-      $flowList.find(".zoho-flow-empty").remove();
-
-      if (!flows.length) {
-        $flowList.append(
-          '<p class="zoho-flow-empty">No flow yet. Add your Zoho Flow webhook URL below.</p>'
-        );
-      }
-
-      flows.forEach(function (flow, index) {
-        const $row = $('<div class="zoho-flow-row" data-index="' + index + '">');
-
-        $row.append(
-          '<input type="text" class="zoho-flow-name" placeholder="Name (optional, e.g. Sales Flow)" value="' +
-            escapeHtml(flow.name || "") +
-            '">'
-        );
-        $row.append(
-          '<input type="text" class="zoho-flow-url" spellcheck="false" placeholder="https://flow.zoho.com/.../flow/webhook/incoming?zapikey=..." value="' +
-            escapeHtml(flow.url || "") +
-            '">'
-        );
-
-        const $actions = $('<div class="zoho-flow-row-actions">');
-        $actions.append(
-          '<button type="button" class="button button-small zoho-flow-test">Test</button>'
-        );
-        $actions.append(
-          '<button type="button" class="button button-small button-link-delete zoho-flow-remove">Remove</button>'
-        );
-        $row.append($actions);
-        $row.append('<div class="zoho-flow-result" style="display:none;"></div>');
-
-        $flowList.find("h4").after($row);
-      });
-    }
-
-    renderFlowRows();
-
+    $flowList.append('<div class="zoho-flow-rows"></div>');
     $flowList.append(
-      '<button type="button" class="button button-small zoho-flow-add">+ Add another flow</button>'
-    );
-    $flowList.append(
-      '<small class="zoho-flow-hint">Paste the webhook URL from your flow\'s Webhook trigger. Add more than one to send this form to several flows.</small>'
+      '<small class="zoho-flow-hint">Paste the webhook URL from your flow\'s Webhook trigger.</small>'
     );
 
     $zohoConfig.append($flowList);
+    renderZohoFlowRows();
 
     $zohoConfig.append(
       '<label><input type="checkbox" id="zoho-send-on-steps" ' +
@@ -1067,36 +1073,36 @@ Best regards,
         formData.zoho_flow.send_on_steps = $(this).is(":checked");
       });
 
-    // Flow rows: edit, add, remove, test
+    // Flow rows. Handlers are delegated from the list container so they
+    // survive a row redraw, and they redraw only the rows - never the whole
+    // property panel, which would collapse the accordion.
     const $flowScope = $(".zoho-flow-list");
 
     $flowScope
       .off("input", ".zoho-flow-name")
       .on("input", ".zoho-flow-name", function () {
-        const i = $(this).closest(".zoho-flow-row").data("index");
-        formData.zoho_flow.flows[i].name = $(this).val();
+        formData.zoho_flow.flows[0].name = $(this).val();
       });
 
     $flowScope
       .off("input", ".zoho-flow-url")
       .on("input", ".zoho-flow-url", function () {
-        const i = $(this).closest(".zoho-flow-row").data("index");
-        formData.zoho_flow.flows[i].url = $(this).val().trim();
+        formData.zoho_flow.flows[0].url = $(this).val().trim();
       });
 
     $flowScope
       .off("click", ".zoho-flow-add")
       .on("click", ".zoho-flow-add", function () {
-        formData.zoho_flow.flows.push({ name: "", url: "" });
-        renderPageProperties();
+        formData.zoho_flow.flows = [{ name: "", url: "" }];
+        renderZohoFlowRows();
+        $(".zoho-flow-url").trigger("focus");
       });
 
     $flowScope
       .off("click", ".zoho-flow-remove")
       .on("click", ".zoho-flow-remove", function () {
-        const i = $(this).closest(".zoho-flow-row").data("index");
-        formData.zoho_flow.flows.splice(i, 1);
-        renderPageProperties();
+        formData.zoho_flow.flows = [];
+        renderZohoFlowRows();
       });
 
     $flowScope
