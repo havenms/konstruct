@@ -66,60 +66,46 @@ class Form_Builder_Zoho_Flow_Handler {
     );
 
     /**
-     * Get the stored site-wide connection
+     * Read the legacy site-wide connection, if one was ever saved.
      *
-     * @return array{url:string,connected_at:string}
+     * Connections now live on each form. This is kept only so sites that
+     * configured the old settings page keep delivering without any action.
+     *
+     * @return string Empty string when none was saved
      */
-    public function get_connection() {
-        $defaults = array(
-            'url'          => '',
-            'connected_at' => '',
-        );
-
+    public function get_legacy_url() {
         $stored = get_option(self::OPTION_KEY, array());
+
         if (!is_array($stored)) {
-            $stored = array();
+            return '';
         }
 
-        return array_merge($defaults, $stored);
+        // Original shape: array('url' => ..., 'connected_at' => ...)
+        if (!empty($stored['url'])) {
+            return (string) $stored['url'];
+        }
+
+        // Intermediate shape: a list of named connections
+        if (!empty($stored['connections']) && is_array($stored['connections'])) {
+            $default_id = isset($stored['default_id']) ? (string) $stored['default_id'] : '';
+
+            foreach ($stored['connections'] as $connection) {
+                if (!empty($default_id) && isset($connection['id']) && $connection['id'] === $default_id) {
+                    return isset($connection['url']) ? (string) $connection['url'] : '';
+                }
+            }
+
+            $first = reset($stored['connections']);
+            if (!empty($first['url'])) {
+                return (string) $first['url'];
+            }
+        }
+
+        return '';
     }
 
     /**
-     * Persist the site-wide connection URL
-     *
-     * @param string $url Raw URL submitted by an administrator
-     * @return true|WP_Error
-     */
-    public function save_connection($url) {
-        $url = trim((string) $url);
 
-        // An empty URL clears the connection
-        if ($url === '') {
-            update_option(self::OPTION_KEY, array(
-                'url'          => '',
-                'connected_at' => '',
-            ));
-            return true;
-        }
-
-        $validation = $this->validate_url($url);
-        if (is_wp_error($validation)) {
-            return $validation;
-        }
-
-        update_option(self::OPTION_KEY, array(
-            'url'          => $url,
-            'connected_at' => current_time('mysql'),
-        ));
-
-        return true;
-    }
-
-    /**
-     * Validate that a URL is a usable Zoho Flow incoming webhook
-     *
-     * @param string $url
-     * @return true|WP_Error
      */
     public function validate_url($url) {
         if (!filter_var($url, FILTER_VALIDATE_URL)) {
@@ -197,54 +183,88 @@ class Form_Builder_Zoho_Flow_Handler {
     }
 
     /**
-     * Whether the site has a usable connection
+     * Whether anything is configured that a form could fall back to.
+     * Only meaningful for sites carrying a legacy site-wide connection.
      *
      * @return bool
      */
     public function is_connected() {
-        $connection = $this->get_connection();
+        $legacy = $this->get_legacy_url();
 
-        return !empty($connection['url']) && $this->validate_url($connection['url']) === true;
+        return $legacy !== '' && $this->validate_url($legacy) === true;
     }
 
     /**
-     * Resolve which URL a given form should post to.
-     * A per-form override wins over the site-wide connection.
+     * Resolve every flow a given form should deliver to.
+     *
+     * Flows are configured on the form itself. A legacy site-wide connection
+     * is used only when the form defines none of its own, so sites set up
+     * before per-form flows existed keep working untouched.
      *
      * @param array $form_config Decoded form configuration
-     * @return string Empty string when the form should not send
+     * @return array List of array{name,url} - empty when nothing should send
      */
-    public function get_effective_url($form_config) {
+    public function resolve_connections_for_form($form_config) {
         $settings = $this->get_form_settings($form_config);
 
         if (empty($settings['enabled'])) {
-            return '';
+            return array();
         }
 
-        if (!empty($settings['override_url'])) {
-            return $this->validate_url($settings['override_url']) === true
-                ? $settings['override_url']
-                : '';
+        $resolved = array();
+        $seen     = array();
+
+        foreach ($settings['flows'] as $index => $flow) {
+            // Skip anything that is not a usable Zoho Flow URL rather than
+            // failing the whole delivery
+            if ($this->validate_url($flow['url']) !== true) {
+                continue;
+            }
+
+            // The same URL listed twice would double-send
+            if (isset($seen[$flow['url']])) {
+                continue;
+            }
+            $seen[$flow['url']] = true;
+
+            $resolved[] = array(
+                'id'   => 'flow_' . $index,
+                'name' => $flow['name'] !== '' ? $flow['name'] : sprintf(
+                    /* translators: %d: position of the flow on the form */
+                    __('Flow %d', 'form-builder-microsaas'),
+                    $index + 1
+                ),
+                'url'  => $flow['url'],
+            );
         }
 
-        $connection = $this->get_connection();
-        if (empty($connection['url'])) {
-            return '';
+        if (!empty($resolved)) {
+            return $resolved;
         }
 
-        return $this->validate_url($connection['url']) === true ? $connection['url'] : '';
+        // Legacy fallback: a site-wide connection saved before this change
+        $legacy = $this->get_legacy_url();
+        if ($legacy !== '' && $this->validate_url($legacy) === true) {
+            return array(array(
+                'id'   => 'legacy',
+                'name' => __('Site connection', 'form-builder-microsaas'),
+                'url'  => $legacy,
+            ));
+        }
+
+        return array();
     }
 
     /**
      * Read the Zoho settings block from a form configuration
      *
      * @param array $form_config
-     * @return array{enabled:bool,override_url:string,send_on_steps:bool}
+     * @return array{enabled:bool,flows:array,send_on_steps:bool}
      */
     public function get_form_settings($form_config) {
         $defaults = array(
             'enabled'       => false,
-            'override_url'  => '',
+            'flows'         => array(),
             'send_on_steps' => false,
         );
 
@@ -254,17 +274,43 @@ class Form_Builder_Zoho_Flow_Handler {
 
         $settings = array_merge($defaults, $form_config['zoho_flow']);
 
+        $flows = array();
+        if (is_array($settings['flows'])) {
+            foreach ($settings['flows'] as $flow) {
+                if (is_string($flow)) {
+                    $flow = array('url' => $flow);
+                }
+
+                if (!is_array($flow) || empty($flow['url'])) {
+                    continue;
+                }
+
+                $flows[] = array(
+                    'name' => isset($flow['name']) ? sanitize_text_field($flow['name']) : '',
+                    'url'  => trim((string) $flow['url']),
+                );
+            }
+        }
+
+        // Forms saved with the earlier single override URL
+        if (empty($flows) && !empty($form_config['zoho_flow']['override_url'])) {
+            $flows[] = array(
+                'name' => '',
+                'url'  => trim((string) $form_config['zoho_flow']['override_url']),
+            );
+        }
+
         return array(
             'enabled'       => !empty($settings['enabled']),
-            'override_url'  => is_string($settings['override_url']) ? trim($settings['override_url']) : '',
+            'flows'         => $flows,
             'send_on_steps' => !empty($settings['send_on_steps']),
         );
     }
 
     /**
      * Strip secrets from a form configuration before it is handed to the browser.
-     * The renderer prints the whole configuration into the page, so the
-     * override URL (which contains a zapikey) must be removed first.
+     * The renderer prints the whole configuration into the page, so every flow
+     * URL (each carrying a zapikey) must be removed first.
      *
      * @param array $form_config
      * @return array
@@ -462,34 +508,55 @@ class Form_Builder_Zoho_Flow_Handler {
         $settings    = $this->get_form_settings($form_config);
 
         if (empty($settings['enabled'])) {
-            return array('sent' => false, 'reason' => 'disabled');
+            return array('sent' => false, 'reason' => 'disabled', 'results' => array());
         }
 
         // Intermediate pages only send when the form opts into step delivery
         if (!$is_final && empty($settings['send_on_steps'])) {
-            return array('sent' => false, 'reason' => 'steps_disabled');
+            return array('sent' => false, 'reason' => 'steps_disabled', 'results' => array());
         }
 
-        $url = $this->get_effective_url($form_config);
-        if ($url === '') {
-            return array('sent' => false, 'reason' => 'not_connected');
+        $connections = $this->resolve_connections_for_form($form_config);
+        if (empty($connections)) {
+            return array('sent' => false, 'reason' => 'not_connected', 'results' => array());
         }
 
+        // Built once and reused, so every flow receives an identical payload
         $payload = $this->build_payload($form, $page_number, $form_data, $submission_uuid, $is_final);
 
-        $start    = microtime(true);
-        $result   = $this->send($url, $payload);
-        $duration = round((microtime(true) - $start) * 1000);
+        $results   = array();
+        $any_sent  = false;
 
-        $this->log_delivery($form, $page_number, $url, $result, $duration, $submission_uuid);
+        foreach ($connections as $connection) {
+            $start    = microtime(true);
+            $result   = $this->send($connection['url'], $payload);
+            $duration = round((microtime(true) - $start) * 1000);
 
-        if (!empty($result['error'])) {
-            return array('sent' => false, 'reason' => 'request_failed', 'error' => $result['error']);
+            $this->log_delivery($form, $page_number, $connection['url'], $result, $duration, $submission_uuid);
+
+            $entry = array(
+                'connection_id'   => $connection['id'],
+                'connection_name' => $connection['name'],
+                'sent'            => empty($result['error']) && !empty($result['success']),
+                'status_code'     => $result['status_code'],
+            );
+
+            if (!empty($result['error'])) {
+                $entry['error'] = $result['error'];
+            }
+
+            if ($entry['sent']) {
+                $any_sent = true;
+            }
+
+            // Deliberately not short-circuiting: one flow failing must not
+            // stop the others from being attempted
+            $results[] = $entry;
         }
 
         return array(
-            'sent'        => !empty($result['success']),
-            'status_code' => $result['status_code'],
+            'sent'    => $any_sent,
+            'results' => $results,
         );
     }
 
@@ -543,14 +610,13 @@ class Form_Builder_Zoho_Flow_Handler {
         $url = trim((string) $url);
 
         if ($url === '') {
-            $connection = $this->get_connection();
-            $url        = $connection['url'];
+            $url = $this->get_legacy_url();
         }
 
         if ($url === '') {
             return new WP_Error(
                 'zoho_not_configured',
-                __('Add your Zoho Flow webhook URL first, then test the connection.', 'form-builder-microsaas')
+                __('Paste your Zoho Flow webhook URL first, then test it.', 'form-builder-microsaas')
             );
         }
 

@@ -95,20 +95,6 @@ class Form_Builder_REST_API {
             'permission_callback' => array($this, 'check_admin_permission'),
         ));
 
-        // Zoho Flow: read the site-wide connection (admins only)
-        register_rest_route('form-builder/v1', '/zoho-flow/connection', array(
-            'methods' => 'GET',
-            'callback' => array($this, 'get_zoho_connection'),
-            'permission_callback' => array($this, 'check_admin_permission'),
-        ));
-
-        // Zoho Flow: save the site-wide connection (admins only)
-        register_rest_route('form-builder/v1', '/zoho-flow/connection', array(
-            'methods' => 'POST',
-            'callback' => array($this, 'save_zoho_connection'),
-            'permission_callback' => array($this, 'check_admin_permission'),
-        ));
-
         // Zoho Flow: send a sample payload (admins only)
         register_rest_route('form-builder/v1', '/zoho-flow/test', array(
             'methods' => 'POST',
@@ -499,51 +485,6 @@ class Form_Builder_REST_API {
         ), 200);
     }
     
-    /**
-     * Return the site-wide Zoho Flow connection status.
-     * The URL is masked so the zapikey is never echoed back in full.
-     */
-    public function get_zoho_connection($request) {
-        $zoho       = new Form_Builder_Zoho_Flow_Handler();
-        $connection = $zoho->get_connection();
-
-        return new WP_REST_Response(array(
-            'connected'    => $zoho->is_connected(),
-            'masked_url'   => $zoho->mask_url($connection['url']),
-            'region'       => $zoho->get_region_label($connection['url']),
-            'connected_at' => $connection['connected_at'],
-        ), 200);
-    }
-
-    /**
-     * Save the site-wide Zoho Flow connection
-     */
-    public function save_zoho_connection($request) {
-        $params = $request->get_json_params();
-        $url    = isset($params['url']) ? $params['url'] : '';
-
-        $zoho   = new Form_Builder_Zoho_Flow_Handler();
-        $result = $zoho->save_connection($url);
-
-        if (is_wp_error($result)) {
-            return new WP_Error(
-                $result->get_error_code(),
-                $result->get_error_message(),
-                array('status' => 400)
-            );
-        }
-
-        $connection = $zoho->get_connection();
-
-        return new WP_REST_Response(array(
-            'success'      => true,
-            'connected'    => $zoho->is_connected(),
-            'masked_url'   => $zoho->mask_url($connection['url']),
-            'region'       => $zoho->get_region_label($connection['url']),
-            'connected_at' => $connection['connected_at'],
-        ), 200);
-    }
-
     /**
      * Send a sample payload to Zoho Flow so field mapping can be set up
      */

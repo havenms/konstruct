@@ -8,7 +8,7 @@ A standalone HTML-CSS-JS form builder that creates paginated forms with configur
 - **All Input Types**: Supports text, email, tel, number, textarea, select, radio, checkbox, file, date
 - **Paginated Forms**: Multi-page forms with Next/Back navigation
 - **Per-Page Webhooks**: Configure webhook URL for each page
-- **Zoho Flow Integration**: Connect once site-wide, then enable per form with one checkbox
+- **Zoho Flow Integration**: Configured per form with a test button; one form can send to several flows
 - **Email Notifications**: Automatic notifications for step completion and final submission
 - **Form Persistence**: Auto-saves form data to localStorage
 - **Shortcode Embedding**: Easy form embedding via `[form_builder id="form-slug"]`
@@ -73,22 +73,46 @@ Or by form ID:
 
 ### Zoho Flow
 
-Connect once for the whole site, then switch it on per form with a single checkbox — no URL pasting for each form.
+Configured entirely on the form. There is no separate settings page — open a form, paste the webhook URL, done.
 
-**One-time setup**
+**Setup**
 
-1. In Zoho Flow, click **Create Flow** and name it (e.g. "Website Forms")
+1. In Zoho Flow, click **Create Flow** and name it
 2. Choose the **Webhook** trigger and click **Configure**
 3. Set the data format to **JSON**
 4. Copy the generated URL
-5. In WordPress, go to **Konstruct Form Builder → Zoho Flow**, paste the URL, click **Save Connection**, then **Send Test**
-6. Back in Zoho Flow, click **Test** to capture the sample payload — your field names are now available for mapping
+5. Switch the flow **on**. A flow that is off rejects incoming data
+6. In WordPress, open your form, expand the **Zoho Flow** panel, tick **Send submissions to Zoho Flow**, paste the URL, and click **Test**
+7. Back in Zoho Flow, click **Test** to capture the sample payload — your field names are now available for mapping
 
-**Per form**
+**The panel**
 
-Open any form, expand the **Zoho Flow** panel in Page Settings, and tick **Send submissions to Zoho Flow**. Optionally enable **Also send after each page** to capture partial leads.
+```
+Zoho Flow
+☑ Send submissions to Zoho Flow
 
-An **Advanced** section allows a per-form webhook URL when a specific form needs to reach a different flow.
+  DELIVER TO
+  ┌──────────────────────────────────────┐
+  │ Sales Flow                           │
+  │ https://flow.zoho.com/.../incoming…  │
+  │ [Test]  [Remove]                     │
+  └──────────────────────────────────────┘
+  + Add another flow
+
+  ☐ Also send after each page
+```
+
+Each row has an optional name (for your reference only — it is never sent to Zoho) and the webhook URL. **Test** delivers a sample payload immediately and reports the result inline.
+
+**Sending to several flows**
+
+Click **Add another flow** and paste a second URL. The form then delivers to every flow listed. Deliveries are independent: the payload is built once and reused so each flow receives an identical body, one flow failing does not stop the others, and each attempt gets its own row in the webhook log.
+
+A URL listed twice is only sent once, and an invalid URL is skipped rather than failing the whole delivery.
+
+**One flow for many forms**
+
+If several forms should feed the same flow, paste the same URL into each. In Zoho Flow, add a **Decision** box after the trigger and branch on `form_name` to route each form to its own actions.
 
 **Payload**
 
@@ -109,13 +133,9 @@ Fields are sent at the top level so Zoho Flow lists them directly, with no nesti
 }
 ```
 
-**Serving every form from one flow**
-
-Add a **Decision** box after the webhook trigger and branch on `form_name`. One flow can then route each form to its own actions, which is why a single connection is enough for the whole site.
-
 **Notes**
 
-- The webhook URL contains a secret (`zapikey`). It is stored server-side, never sent to the browser, and masked before being written to the webhook log.
+- The webhook URL contains a secret (`zapikey`). It is stored server-side, stripped from the form config before the page is rendered, and masked before being written to the webhook log.
 - Only `flow.zoho.*` addresses are accepted, across all Zoho data centres (US, EU, India, Australia, Japan, Canada, Saudi Arabia, China).
 - Checkbox groups arrive as a comma-separated string; file uploads arrive as their protected download URL.
 - Field names are normalised to lowercase keys. Two names that normalise identically are suffixed (`firstname`, `firstname_2`) rather than overwriting each other.
@@ -183,13 +203,11 @@ form-builder-plugin/
 │   ├── class-form-builder.php   # Builder logic
 │   ├── class-form-renderer.php  # Frontend rendering
 │   ├── class-webhook-handler.php # Webhook processing
-│   └── class-zoho-flow-handler.php # Zoho Flow connection & delivery
+│   └── class-zoho-flow-handler.php # Zoho Flow validation & delivery
 ├── admin/
 │   ├── builder.php              # Admin builder UI
 │   ├── builder.js               # Builder JavaScript
-│   ├── builder.css              # Builder styles
-│   ├── zoho-flow.php            # Zoho Flow connection page
-│   └── zoho-flow.js             # Connection page JavaScript
+│   └── builder.css              # Builder styles
 └── frontend/
     ├── form.js                  # Form runtime JavaScript
     └── form.css                 # Form styles

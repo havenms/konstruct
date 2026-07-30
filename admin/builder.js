@@ -360,9 +360,24 @@ Best regards,
     if (!formData.zoho_flow) {
       formData.zoho_flow = {
         enabled: false,
-        override_url: "",
+        flows: [],
         send_on_steps: false,
       };
+    }
+
+    // Normalise older saved shapes into the flows list
+    if (!Array.isArray(formData.zoho_flow.flows)) {
+      formData.zoho_flow.flows = [];
+    }
+    if (
+      !formData.zoho_flow.flows.length &&
+      formData.zoho_flow.override_url
+    ) {
+      formData.zoho_flow.flows.push({
+        name: "",
+        url: formData.zoho_flow.override_url,
+      });
+      delete formData.zoho_flow.override_url;
     }
 
     // Ensure all notification properties exist (for backward compatibility)
@@ -893,27 +908,6 @@ Best regards,
     );
 
     const $zoho = $('<div class="property-group">');
-    const zohoConnected = !!(
-      typeof formBuilderAdmin !== "undefined" && formBuilderAdmin.zohoConnected
-    );
-    const zohoSettingsUrl =
-      typeof formBuilderAdmin !== "undefined"
-        ? formBuilderAdmin.zohoSettingsUrl
-        : "#";
-
-    // Connection status comes from the site-wide setting
-    $zoho.append(
-      '<p class="zoho-inline-status ' +
-        (zohoConnected ? "is-connected" : "is-disconnected") +
-        '">' +
-        (zohoConnected
-          ? "● Connected to Zoho Flow"
-          : '○ Not connected — <a href="' +
-            zohoSettingsUrl +
-            '">set up the connection</a>') +
-        "</p>"
-    );
-
     $zoho.append(
       '<label><input type="checkbox" id="zoho-enabled" ' +
         (formData.zoho_flow.enabled ? "checked" : "") +
@@ -926,20 +920,65 @@ Best regards,
         '">'
     );
 
+    // Flows live on the form itself, so everything is configured right here
+    const flows = formData.zoho_flow.flows;
+
+    const $flowList = $('<div class="zoho-flow-list">');
+    $flowList.append("<h4>Deliver to</h4>");
+
+    function renderFlowRows() {
+      $flowList.find(".zoho-flow-row").remove();
+      $flowList.find(".zoho-flow-empty").remove();
+
+      if (!flows.length) {
+        $flowList.append(
+          '<p class="zoho-flow-empty">No flow yet. Add your Zoho Flow webhook URL below.</p>'
+        );
+      }
+
+      flows.forEach(function (flow, index) {
+        const $row = $('<div class="zoho-flow-row" data-index="' + index + '">');
+
+        $row.append(
+          '<input type="text" class="zoho-flow-name" placeholder="Name (optional, e.g. Sales Flow)" value="' +
+            escapeHtml(flow.name || "") +
+            '">'
+        );
+        $row.append(
+          '<input type="text" class="zoho-flow-url" spellcheck="false" placeholder="https://flow.zoho.com/.../flow/webhook/incoming?zapikey=..." value="' +
+            escapeHtml(flow.url || "") +
+            '">'
+        );
+
+        const $actions = $('<div class="zoho-flow-row-actions">');
+        $actions.append(
+          '<button type="button" class="button button-small zoho-flow-test">Test</button>'
+        );
+        $actions.append(
+          '<button type="button" class="button button-small button-link-delete zoho-flow-remove">Remove</button>'
+        );
+        $row.append($actions);
+        $row.append('<div class="zoho-flow-result" style="display:none;"></div>');
+
+        $flowList.find("h4").after($row);
+      });
+    }
+
+    renderFlowRows();
+
+    $flowList.append(
+      '<button type="button" class="button button-small zoho-flow-add">+ Add another flow</button>'
+    );
+    $flowList.append(
+      '<small class="zoho-flow-hint">Paste the webhook URL from your flow\'s Webhook trigger. Add more than one to send this form to several flows.</small>'
+    );
+
+    $zohoConfig.append($flowList);
+
     $zohoConfig.append(
       '<label><input type="checkbox" id="zoho-send-on-steps" ' +
         (formData.zoho_flow.send_on_steps ? "checked" : "") +
         "> <span>Also send after each page (captures partial leads)</span></label>"
-    );
-
-    $zohoConfig.append(
-      '<details class="zoho-advanced"><summary>Advanced</summary>' +
-        '<label>Use a different webhook URL for this form:<br>' +
-        '<input type="text" id="zoho-override-url" class="regular-text" placeholder="Leave blank to use the site connection" value="' +
-        escapeHtml(formData.zoho_flow.override_url || "") +
-        '"></label>' +
-        "<small>Only needed if this form should reach a different flow.</small>" +
-        "</details>"
     );
 
     $zoho.append($zohoConfig);
@@ -1028,10 +1067,79 @@ Best regards,
         formData.zoho_flow.send_on_steps = $(this).is(":checked");
       });
 
-    $("#zoho-override-url")
-      .off("input")
-      .on("input", function () {
-        formData.zoho_flow.override_url = $(this).val().trim();
+    // Flow rows: edit, add, remove, test
+    const $flowScope = $(".zoho-flow-list");
+
+    $flowScope
+      .off("input", ".zoho-flow-name")
+      .on("input", ".zoho-flow-name", function () {
+        const i = $(this).closest(".zoho-flow-row").data("index");
+        formData.zoho_flow.flows[i].name = $(this).val();
+      });
+
+    $flowScope
+      .off("input", ".zoho-flow-url")
+      .on("input", ".zoho-flow-url", function () {
+        const i = $(this).closest(".zoho-flow-row").data("index");
+        formData.zoho_flow.flows[i].url = $(this).val().trim();
+      });
+
+    $flowScope
+      .off("click", ".zoho-flow-add")
+      .on("click", ".zoho-flow-add", function () {
+        formData.zoho_flow.flows.push({ name: "", url: "" });
+        renderPageProperties();
+      });
+
+    $flowScope
+      .off("click", ".zoho-flow-remove")
+      .on("click", ".zoho-flow-remove", function () {
+        const i = $(this).closest(".zoho-flow-row").data("index");
+        formData.zoho_flow.flows.splice(i, 1);
+        renderPageProperties();
+      });
+
+    $flowScope
+      .off("click", ".zoho-flow-test")
+      .on("click", ".zoho-flow-test", function () {
+        const $row = $(this).closest(".zoho-flow-row");
+        const $result = $row.find(".zoho-flow-result");
+        const url = $row.find(".zoho-flow-url").val().trim();
+        const $btn = $(this);
+
+        $btn.prop("disabled", true).text("Testing...");
+        $result.hide().removeClass("is-success is-error");
+
+        fetch(formBuilderAdmin.apiUrl + "zoho-flow/test", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-WP-Nonce": formBuilderAdmin.nonce,
+          },
+          body: JSON.stringify({ url: url }),
+        })
+          .then(function (response) {
+            return response.json().then(function (data) {
+              if (!response.ok) throw new Error(data.message || "Test failed");
+              return data;
+            });
+          })
+          .then(function (data) {
+            $result
+              .addClass("is-success")
+              .html(
+                "Delivered (HTTP " +
+                  data.status_code +
+                  "). Open this flow in Zoho Flow and click <em>Test</em> to capture the payload for field mapping."
+              )
+              .show();
+          })
+          .catch(function (error) {
+            $result.addClass("is-error").text(error.message).show();
+          })
+          .finally(function () {
+            $btn.prop("disabled", false).text("Test");
+          });
       });
 
     // Bind email notification events

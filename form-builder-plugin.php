@@ -3,7 +3,7 @@
  * Plugin Name: Konstruct Form Builder
  * Plugin URI: https://example.com/form-builder
  * Description: A standalone form builder tool that creates paginated forms with configurable per-page webhooks. All data stored in WordPress database.
- * Version: 1.3.0
+ * Version: 1.4.0
  * Author: Your Name
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('FORM_BUILDER_VERSION', '1.3.0');
+define('FORM_BUILDER_VERSION', '1.4.0');
 define('FORM_BUILDER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('FORM_BUILDER_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('FORM_BUILDER_DEV_MODE', defined('WP_DEBUG') && WP_DEBUG);

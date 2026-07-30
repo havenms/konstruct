@@ -76,7 +76,7 @@ Best regards,
             ),
             'zoho_flow' => array(
                 'enabled' => false,
-                'override_url' => '',
+                'flows' => array(),
                 'send_on_steps' => false
             )
         );
@@ -126,12 +126,15 @@ Best regards,
             }
         }
 
-        // Validate the per-form Zoho Flow override when one is supplied
-        if (!empty($config['zoho_flow']['enabled']) && !empty($config['zoho_flow']['override_url'])) {
+        // Validate each Zoho Flow URL configured on the form
+        if (!empty($config['zoho_flow']['enabled'])) {
             $zoho = new Form_Builder_Zoho_Flow_Handler();
-            $validation = $zoho->validate_url($config['zoho_flow']['override_url']);
-            if (is_wp_error($validation)) {
-                $errors[] = $validation->get_error_message();
+
+            foreach ($zoho->get_form_settings($config)['flows'] as $index => $flow) {
+                $validation = $zoho->validate_url($flow['url']);
+                if (is_wp_error($validation)) {
+                    $errors[] = sprintf('Zoho Flow #%d: %s', $index + 1, $validation->get_error_message());
+                }
             }
         }
 

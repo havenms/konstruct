@@ -47,40 +47,7 @@ class Form_Builder_Asset_Manager {
             'adminUrl' => admin_url('admin.php'),
             'cacheKey' => time(), // Additional cache buster
             'isDev' => defined('WP_DEBUG') && WP_DEBUG,
-            'zohoConnected' => $this->is_zoho_connected(),
-            'zohoSettingsUrl' => admin_url('admin.php?page=form-builder-zoho-flow'),
         ));
-
-        // The connection page has its own small script
-        if (strpos($hook, 'form-builder-zoho-flow') !== false) {
-            wp_enqueue_script(
-                'form-builder-zoho',
-                FORM_BUILDER_PLUGIN_URL . 'admin/zoho-flow.js',
-                array('jquery'),
-                $this->get_asset_version('admin/zoho-flow.js'),
-                true
-            );
-
-            wp_localize_script('form-builder-zoho', 'formBuilderZoho', array(
-                'apiUrl' => rest_url('form-builder/v1/'),
-                'nonce' => wp_create_nonce('wp_rest'),
-            ));
-        }
-    }
-
-    /**
-     * Whether a valid site-wide Zoho Flow connection exists
-     *
-     * @return bool
-     */
-    private function is_zoho_connected() {
-        if (!class_exists('Form_Builder_Zoho_Flow_Handler')) {
-            return false;
-        }
-
-        $zoho = new Form_Builder_Zoho_Flow_Handler();
-
-        return $zoho->is_connected();
     }
     
     /**
