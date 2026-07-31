@@ -1311,6 +1311,17 @@ Best regards,
     const $props = $("#page-properties");
     $props.empty();
 
+    // Editing a field replaces the page settings entirely, so offer the way
+    // back rather than leaving the user stuck.
+    const $back = $(
+      '<button type="button" class="button button-small field-props-back">&larr; Back to Page Settings</button>'
+    );
+    $back.on("click", function () {
+      currentFieldIndex = null;
+      renderPageProperties();
+    });
+    $props.append($back);
+
     $props.append("<h4>Field Properties</h4>");
 
     // Label (required)
