@@ -13,6 +13,9 @@
   // Set when a field is dropped onto another page, so the sortable's own
   // update handler does not additionally treat it as a same-page reorder
   let crossPageDrop = false;
+  // Set when a field type is dragged in from the sidebar, so the sortable's
+  // update handler does not additionally treat the clone as a reorder
+  let newFieldDrop = false;
 
   // Standard Meta events. Custom event names are deliberately not offered:
   // they do not appear in Ads Manager reporting without extra setup.
@@ -454,6 +457,8 @@ Best regards,
       addField($(this).data("type"));
     });
 
+    makeFieldTypesDraggable();
+
     // Form name generates slug
     $("#form-name").on("input", function () {
       if (!$("#form-slug").val()) {
@@ -656,6 +661,37 @@ Best regards,
    * Move field from one position to another
    */
   /**
+   * Let a field type be dragged from the sidebar onto the page.
+   *
+   * connectToSortable hands the drop to the fields list, so the field lands
+   * where it was dropped rather than always at the end.
+   */
+  function makeFieldTypesDraggable() {
+    const $types = $(".field-type-btn");
+
+    if (!$types.length || typeof $types.draggable !== "function") {
+      // Clicking a field type still adds it
+      return;
+    }
+
+    $types.draggable({
+      connectToSortable: ".fields-list",
+      helper: "clone",
+      // Escape the sidebar so the helper is visible over the page column
+      appendTo: "body",
+      zIndex: 1000,
+      // Without a threshold, an ordinary click registers as a drag
+      distance: 6,
+      revert: "invalid",
+      revertDuration: 150,
+      cursor: "grabbing",
+      start: function (event, ui) {
+        ui.helper.addClass("field-type-drag-helper");
+      },
+    });
+  }
+
+  /**
    * Enable drag-and-drop reordering of fields.
    *
    * The Up/Down buttons are kept: they remain the only way to reorder with a
@@ -689,7 +725,26 @@ Best regards,
       stop: function (event, ui) {
         ui.item.removeClass("is-dragging");
       },
+      receive: function (event, ui) {
+        // A field type was dragged in from the sidebar. ui.item is the clone
+        // jQuery UI inserted; the real field is built from its type.
+        const type = ui.item.data("type") || ui.helper.data("type");
+        const insertAt = ui.item.index();
+
+        newFieldDrop = true;
+        ui.item.remove();
+
+        if (type) {
+          addField(type, insertAt);
+        }
+      },
       update: function (event, ui) {
+        // The clone dropped in from the sidebar is not a reorder
+        if (newFieldDrop) {
+          newFieldDrop = false;
+          return;
+        }
+
         // A drop onto another page has already moved the field and re-rendered
         if (crossPageDrop) {
           crossPageDrop = false;
@@ -1746,7 +1801,7 @@ Best regards,
   /**
    * Add field
    */
-  function addField(type) {
+  function addField(type, insertAt) {
     const page = formData.pages[currentPageIndex];
     if (!page) return;
 
@@ -1778,8 +1833,19 @@ Best regards,
       field.button_style = "primary";
     }
 
-    page.fields.push(field);
-    currentFieldIndex = page.fields.length - 1;
+    // Dropping between existing fields inserts there; clicking appends
+    if (
+      typeof insertAt === "number" &&
+      insertAt >= 0 &&
+      insertAt < page.fields.length
+    ) {
+      page.fields.splice(insertAt, 0, field);
+      currentFieldIndex = insertAt;
+    } else {
+      page.fields.push(field);
+      currentFieldIndex = page.fields.length - 1;
+    }
+
     renderCurrentPage();
     renderFieldProperties();
   }
