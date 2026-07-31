@@ -73,6 +73,11 @@ Submission ID: {{submission_uuid}}
 Best regards,
 {{site_name}}'
                 )
+            ),
+            'facebook_pixel' => array(
+                'enabled' => false,
+                'pixel_id' => '',
+                'event' => 'Lead'
             )
         );
     }
@@ -120,7 +125,19 @@ Best regards,
                 }
             }
         }
-        
+
+        // Validate the Facebook Pixel settings when tracking is switched on
+        if (!empty($config['facebook_pixel']['enabled'])) {
+            $pixel = new Form_Builder_Facebook_Pixel_Handler();
+            $validation = $pixel->validate_pixel_id(
+                isset($config['facebook_pixel']['pixel_id']) ? $config['facebook_pixel']['pixel_id'] : ''
+            );
+
+            if (is_wp_error($validation)) {
+                $errors[] = $validation->get_error_message();
+            }
+        }
+
         return $errors;
     }
     

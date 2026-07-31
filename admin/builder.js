@@ -11,6 +11,21 @@
   let currentPageIndex = 0;
   let currentFieldIndex = null;
 
+  // Standard Meta events. Custom event names are deliberately not offered:
+  // they do not appear in Ads Manager reporting without extra setup.
+  const FB_PIXEL_EVENTS = [
+    { value: "Lead", label: "Lead - someone submitted an enquiry" },
+    { value: "CompleteRegistration", label: "CompleteRegistration - someone signed up" },
+    { value: "Contact", label: "Contact - someone got in touch" },
+    { value: "Schedule", label: "Schedule - someone booked an appointment" },
+    { value: "SubmitApplication", label: "SubmitApplication - someone applied" },
+    { value: "Subscribe", label: "Subscribe - someone subscribed" },
+    { value: "InitiateCheckout", label: "InitiateCheckout - someone started checking out" },
+    { value: "AddToCart", label: "AddToCart - someone added an item" },
+    { value: "ViewContent", label: "ViewContent - someone viewed a key page" },
+    { value: "Purchase", label: "Purchase - someone bought something" },
+  ];
+
   /**
    * Cache Busting Utilities
    */
@@ -352,6 +367,15 @@ Submission ID: {{submission_uuid}}
 Best regards,
 {{site_name}}`,
         },
+      };
+    }
+
+    // Initialize Facebook Pixel settings if not present
+    if (!formData.facebook_pixel) {
+      formData.facebook_pixel = {
+        enabled: false,
+        pixel_id: "",
+        event: "Lead",
       };
     }
 
@@ -868,6 +892,66 @@ Best regards,
     $emailAccordion.append($emailContent);
     $accordions.append($emailAccordion);
 
+    // Facebook Pixel Accordion
+    const $pixelAccordion = $('<div class="accordion-item">');
+    const $pixelHeader = $(
+      '<button type="button" class="accordion-header" aria-expanded="false">'
+    );
+    $pixelHeader.append('<span class="accordion-title">Facebook Pixel</span>');
+    $pixelHeader.append(
+      '<svg class="accordion-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L1 4H11L6 9Z" fill="currentColor"/></svg>'
+    );
+    $pixelAccordion.append($pixelHeader);
+    const $pixelContent = $(
+      '<div class="accordion-content" style="display: none;">'
+    );
+
+    const $pixel = $('<div class="property-group">');
+    $pixel.append(
+      '<label><input type="checkbox" id="fb-pixel-enabled" ' +
+        (formData.facebook_pixel.enabled ? "checked" : "") +
+        "> <span>Track submissions with Facebook Pixel</span></label>"
+    );
+
+    const $pixelConfig = $(
+      '<div class="fb-pixel-config" style="' +
+        (formData.facebook_pixel.enabled ? "" : "display:none") +
+        '">'
+    );
+
+    $pixelConfig.append(
+      "<label>Pixel ID<br>" +
+        '<input type="text" id="fb-pixel-id" class="regular-text" inputmode="numeric" placeholder="e.g. 1234567890123456" value="' +
+        escapeHtml(formData.facebook_pixel.pixel_id || "") +
+        '"></label>' +
+        '<small class="fb-pixel-hint">Find this in Meta <strong>Events Manager &rarr; Data Sources</strong>. Paste the number only, not the whole snippet.</small>'
+    );
+
+    let eventOptions = "";
+    FB_PIXEL_EVENTS.forEach(function (evt) {
+      eventOptions +=
+        '<option value="' +
+        escapeHtml(evt.value) +
+        '"' +
+        (formData.facebook_pixel.event === evt.value ? " selected" : "") +
+        ">" +
+        escapeHtml(evt.label) +
+        "</option>";
+    });
+
+    $pixelConfig.append(
+      "<label>Event to fire on submit<br>" +
+        '<select id="fb-pixel-event">' +
+        eventOptions +
+        "</select></label>" +
+        '<small class="fb-pixel-hint">Sent once, when the form is completed. The pixel itself loads with the page, so Meta Pixel Helper will detect it.</small>'
+    );
+
+    $pixel.append($pixelConfig);
+    $pixelContent.append($pixel);
+    $pixelAccordion.append($pixelContent);
+    $accordions.append($pixelAccordion);
+
     // Custom JavaScript Accordion
     const $jsAccordion = $('<div class="accordion-item">');
     const $jsHeader = $(
@@ -930,6 +1014,34 @@ Best regards,
       .off("input")
       .on("input", function () {
         page.webhook.url = $(this).val();
+      });
+
+    // Bind Facebook Pixel events
+    $("#fb-pixel-enabled")
+      .off("change")
+      .on("change", function () {
+        formData.facebook_pixel.enabled = $(this).is(":checked");
+        $(this)
+          .closest(".property-group")
+          .find(".fb-pixel-config")
+          .toggle($(this).is(":checked"));
+      });
+
+    $("#fb-pixel-id")
+      .off("input")
+      .on("input", function () {
+        // Pasting from Events Manager often brings spaces or stray characters
+        const digits = $(this).val().replace(/\D/g, "");
+        if (digits !== $(this).val()) {
+          $(this).val(digits);
+        }
+        formData.facebook_pixel.pixel_id = digits;
+      });
+
+    $("#fb-pixel-event")
+      .off("change")
+      .on("change", function () {
+        formData.facebook_pixel.event = $(this).val();
       });
 
     // Bind email notification events

@@ -1277,3 +1277,38 @@
     opacity: 1;
   }
 }
+
+/* ==========================================================================
+   Facebook Pixel
+   ========================================================================== */
+
+.fb-pixel-config {
+  margin-top: 10px;
+  padding-left: 22px;
+  border-left: 2px solid #f0f0f1;
+}
+
+.fb-pixel-config label {
+  display: block;
+  margin-top: 12px;
+  font-weight: 500;
+}
+
+.fb-pixel-config input,
+.fb-pixel-config select {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.fb-pixel-config #fb-pixel-id {
+  font-family: Menlo, Consolas, monospace;
+}
+
+.fb-pixel-hint {
+  display: block;
+  margin-top: 6px;
+  color: #757575;
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 400;
+}

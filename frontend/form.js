@@ -621,6 +621,9 @@
       this.sendWebhook(currentPageConfig.webhook.url, this.currentPage, true);
     }
 
+    // Fire the configured Meta Pixel event
+    this.trackFacebookPixelEvent();
+
     // Execute custom JS if present
     if (currentPageConfig.customJS) {
       try {
@@ -636,6 +639,40 @@
 
     // Clear saved data
     this.clearSavedData();
+  };
+
+  /**
+   * Fire the configured Meta Pixel event for this submission.
+   *
+   * The pixel itself is initialised in the page head, so all this has to do is
+   * send the event. fbq queues calls made before fbevents.js finishes loading,
+   * so there is nothing to wait for.
+   */
+  FormBuilderInstance.prototype.trackFacebookPixelEvent = function () {
+    const pixel = this.config.facebook_pixel;
+
+    if (!pixel || !pixel.enabled || !pixel.event) {
+      return;
+    }
+
+    if (typeof window.fbq !== "function") {
+      // The base code is only printed when the pixel is configured, so this
+      // means something stripped it - an ad blocker, or aggressive optimisation
+      console.warn(
+        "Form Builder: Meta Pixel event not sent, fbq is unavailable on this page."
+      );
+      return;
+    }
+
+    try {
+      // eventID lets Meta de-duplicate if the same submission is also sent
+      // server-side through the Conversions API later
+      window.fbq("track", pixel.event, {}, {
+        eventID: this.submissionUuid || undefined,
+      });
+    } catch (e) {
+      console.error("Form Builder: Meta Pixel event failed:", e);
+    }
   };
 
   FormBuilderInstance.prototype.saveSubmissionToDatabase = function () {

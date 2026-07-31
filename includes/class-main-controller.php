@@ -46,6 +46,10 @@ class Form_Builder_Main_Controller {
         // Frontend
         add_shortcode('form_builder', array($this->shortcode_handler, 'render_form_shortcode'));
         add_action('wp_enqueue_scripts', array($this->asset_manager, 'enqueue_frontend_assets'));
+
+        // Meta Pixel base code must be in the head at load time, before the
+        // shortcode renders, or Pixel Helper will not detect it
+        add_action('wp_head', array($this, 'render_facebook_pixel'), 5);
         add_action('template_redirect', array($this, 'prevent_form_page_caching'));
         
         // Debug notice (only in WP_DEBUG mode)
@@ -54,6 +58,22 @@ class Form_Builder_Main_Controller {
         }
     }
     
+    /**
+     * Print the Meta Pixel base code for any form on this page that uses it
+     */
+    public function render_facebook_pixel() {
+        global $post;
+
+        if (!is_singular() || !is_a($post, 'WP_Post') || empty($post->post_content)) {
+            return;
+        }
+
+        $pixel  = new Form_Builder_Facebook_Pixel_Handler();
+        $pixels = $pixel->collect_pixels_from_content($post->post_content);
+
+        $pixel->render_base_code($pixels);
+    }
+
     /**
      * Prevent caching of pages with forms
      * This ensures field name updates are immediately reflected

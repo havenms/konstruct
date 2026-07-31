@@ -8,6 +8,7 @@ A standalone HTML-CSS-JS form builder that creates paginated forms with configur
 - **All Input Types**: Supports text, email, tel, number, textarea, select, radio, checkbox, file, date
 - **Paginated Forms**: Multi-page forms with Next/Back navigation
 - **Per-Page Webhooks**: Configure webhook URL for each page
+- **Facebook Pixel**: Enter a Pixel ID and pick an event; no JavaScript required
 - **Email Notifications**: Automatic notifications for step completion and final submission
 - **Form Persistence**: Auto-saves form data to localStorage
 - **Shortcode Embedding**: Easy form embedding via `[form_builder id="form-slug"]`
@@ -69,6 +70,36 @@ Or by form ID:
 ```
 [form_builder id="1"]
 ```
+
+### Facebook Pixel
+
+Enter a Pixel ID, choose an event, save. No custom JavaScript.
+
+1. Open your form and expand the **Facebook Pixel** panel
+2. Tick **Track submissions with Facebook Pixel**
+3. Paste your **Pixel ID** — the number from Meta **Events Manager → Data Sources**. Pasting extra text is fine; everything but the digits is stripped as you type
+4. Choose the **event to fire on submit**
+
+Available events: `Lead`, `CompleteRegistration`, `Contact`, `Schedule`, `SubmitApplication`, `Subscribe`, `InitiateCheckout`, `AddToCart`, `ViewContent`, `Purchase`.
+
+**How it works**
+
+The pixel base code is printed in the page `<head>` when the page loads, before the form renders. `PageView` fires immediately; the event you selected fires once, when the form is completed.
+
+This ordering matters. Installing a pixel through Custom JS does not work reliably:
+
+- Custom JS runs inside `new Function(...)` at submit time, so at page load there is no pixel for **Meta Pixel Helper** to detect
+- `fbevents.js` may not have finished loading when the event fires, so the event is lost
+
+Loading the base code with the page fixes both. Pixel Helper detects it normally, and `fbq` queues any event sent before the script finishes.
+
+**Notes**
+
+- Two forms on one page sharing a Pixel ID are initialised once, not twice
+- The submission UUID is sent as the event's `eventID`, so the event can be de-duplicated if the same conversion is later sent server-side through the Conversions API
+- Only standard Meta events are offered — a custom event name would not appear in Ads Manager reporting without extra setup
+- A `<noscript>` tracking pixel is included for visitors without JavaScript
+- Webhook behaviour is unchanged
 
 ### Webhook Configuration
 
