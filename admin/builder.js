@@ -13,9 +13,6 @@
   // Set when a field is dropped onto another page, so the sortable's own
   // update handler does not additionally treat it as a same-page reorder
   let crossPageDrop = false;
-  // Set when a field type is dragged in from the sidebar, so the sortable's
-  // update handler does not additionally treat the clone as a reorder
-  let newFieldDrop = false;
 
   // Standard Meta events. Custom event names are deliberately not offered:
   // they do not appear in Ads Manager reporting without extra setup.
@@ -570,8 +567,9 @@ Best regards,
     $pageEditor.append($fieldsList);
     $editor.append($pageEditor);
 
-    // Sortable must be initialised after the list is in the document
+    // Both must be initialised after the markup is in the document
     makeFieldsSortable();
+    makePageEditorDroppable();
 
     renderPageProperties();
 
@@ -661,10 +659,34 @@ Best regards,
    * Move field from one position to another
    */
   /**
+   * Where a drop at this vertical position should insert.
+   * Returns the index of the first field whose midpoint is below the pointer,
+   * or the field count to append.
+   */
+  function insertIndexForY(pageY) {
+    const $items = $(".fields-list > .field-item");
+
+    for (let i = 0; i < $items.length; i++) {
+      const box = $items[i].getBoundingClientRect();
+      const midpoint = box.top + window.pageYOffset + box.height / 2;
+
+      if (pageY < midpoint) {
+        return i;
+      }
+    }
+
+    return $items.length;
+  }
+
+  /**
    * Let a field type be dragged from the sidebar onto the page.
    *
-   * connectToSortable hands the drop to the fields list, so the field lands
-   * where it was dropped rather than always at the end.
+   * Deliberately not using draggable's connectToSortable: handing a foreign
+   * helper to an existing sortable depends on an internal handshake that is
+   * easily broken by the helper's markup or its offset parent, and it fails
+   * silently when it does break. A plain droppable on the page container is
+   * predictable, and the insert position is calculated here rather than
+   * inferred from where jQuery UI happened to park the helper.
    */
   function makeFieldTypesDraggable() {
     const $types = $(".field-type-btn");
@@ -675,9 +697,8 @@ Best regards,
     }
 
     $types.draggable({
-      connectToSortable: ".fields-list",
       helper: "clone",
-      // Escape the sidebar so the helper is visible over the page column
+      // Escape the sidebar so the helper stays visible over the page column
       appendTo: "body",
       zIndex: 1000,
       // Without a threshold, an ordinary click registers as a drag
@@ -685,8 +706,44 @@ Best regards,
       revert: "invalid",
       revertDuration: 150,
       cursor: "grabbing",
+      cursorAt: { top: 18, left: 20 },
       start: function (event, ui) {
         ui.helper.addClass("field-type-drag-helper");
+        $(".page-editor").addClass("is-accepting-field");
+      },
+      stop: function () {
+        $(".page-editor").removeClass("is-accepting-field");
+      },
+    });
+  }
+
+  /**
+   * Accept a field type dropped anywhere on the page editor.
+   */
+  function makePageEditorDroppable() {
+    const $editor = $(".page-editor");
+
+    if (!$editor.length || typeof $editor.droppable !== "function") {
+      return;
+    }
+
+    $editor.droppable({
+      accept: ".field-type-btn",
+      tolerance: "pointer",
+      hoverClass: "is-drop-target",
+      drop: function (event, ui) {
+        const type = ui.draggable.data("type");
+
+        if (!type) {
+          return;
+        }
+
+        // event.pageY is where the pointer was released. ui.offset is the
+        // helper's own top, used only if the event carries no position.
+        const pageY =
+          typeof event.pageY === "number" ? event.pageY : ui.offset.top;
+
+        addField(type, insertIndexForY(pageY));
       },
     });
   }
@@ -725,26 +782,7 @@ Best regards,
       stop: function (event, ui) {
         ui.item.removeClass("is-dragging");
       },
-      receive: function (event, ui) {
-        // A field type was dragged in from the sidebar. ui.item is the clone
-        // jQuery UI inserted; the real field is built from its type.
-        const type = ui.item.data("type") || ui.helper.data("type");
-        const insertAt = ui.item.index();
-
-        newFieldDrop = true;
-        ui.item.remove();
-
-        if (type) {
-          addField(type, insertAt);
-        }
-      },
       update: function (event, ui) {
-        // The clone dropped in from the sidebar is not a reorder
-        if (newFieldDrop) {
-          newFieldDrop = false;
-          return;
-        }
-
         // A drop onto another page has already moved the field and re-rendered
         if (crossPageDrop) {
           crossPageDrop = false;

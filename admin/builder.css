@@ -1382,6 +1382,18 @@
   pointer-events: none;
 }
 
+/* Page editor as a drop target */
+.page-editor.is-accepting-field {
+  outline: 2px dashed var(--color-border);
+  outline-offset: 6px;
+  border-radius: var(--radius-md);
+}
+
+.page-editor.is-drop-target {
+  outline-color: var(--color-primary);
+  background: rgba(0, 113, 227, 0.03);
+}
+
 /* An empty page still needs a target to drop onto */
 .fields-list {
   min-height: 90px;
