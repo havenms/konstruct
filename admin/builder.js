@@ -698,6 +698,12 @@ Best regards,
 
     $types.draggable({
       helper: "clone",
+      // jQuery UI's mouse widget defaults to
+      // cancel: "input, textarea, button, select, option" and refuses to start
+      // a drag when the mousedown target matches. The field types are literal
+      // <button> elements, so they match their own cancel selector and no drag
+      // ever begins - silently, with no error and no start event.
+      cancel: false,
       // Escape the sidebar so the helper stays visible over the page column
       appendTo: "body",
       zIndex: 1000,
