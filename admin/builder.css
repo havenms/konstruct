@@ -1353,3 +1353,10 @@
   background: rgba(0, 113, 227, 0.04);
   margin-bottom: var(--spacing-sm);
 }
+
+/* Dropping a field onto another page */
+.page-item-drop-target {
+  outline: 2px dashed var(--color-primary);
+  outline-offset: 2px;
+  background: rgba(0, 113, 227, 0.08);
+}

@@ -10,6 +10,9 @@
   let formData = {};
   let currentPageIndex = 0;
   let currentFieldIndex = null;
+  // Set when a field is dropped onto another page, so the sortable's own
+  // update handler does not additionally treat it as a same-page reorder
+  let crossPageDrop = false;
 
   // Standard Meta events. Custom event names are deliberately not offered:
   // they do not appear in Ads Manager reporting without extra setup.
@@ -498,6 +501,8 @@ Best regards,
       $list.append($page);
     });
 
+    makePagesDroppable();
+
     // Attach delete handlers after rendering
     setTimeout(() => {
       $(".delete-page").on("click", function (e) {
@@ -580,7 +585,13 @@ Best regards,
     const isFirst = index === 0;
     const isLast = index === totalFields - 1;
 
-    const $field = $('<div class="field-item" data-index="' + index + '">');
+    const $field = $(
+      '<div class="field-item" data-index="' +
+        index +
+        '" data-field-id="' +
+        escapeHtml(field.id || "") +
+        '">'
+    );
 
     const $header = $('<div class="field-header">');
 
@@ -672,12 +683,19 @@ Best regards,
       forcePlaceholderSize: true,
       start: function (event, ui) {
         startIndex = ui.item.index();
+        crossPageDrop = false;
         ui.item.addClass("is-dragging");
       },
       stop: function (event, ui) {
         ui.item.removeClass("is-dragging");
       },
       update: function (event, ui) {
+        // A drop onto another page has already moved the field and re-rendered
+        if (crossPageDrop) {
+          crossPageDrop = false;
+          return;
+        }
+
         const toIndex = ui.item.index();
 
         if (startIndex === null || toIndex === startIndex) {
@@ -690,6 +708,84 @@ Best regards,
         startIndex = null;
       },
     });
+  }
+
+  /**
+   * Let a field be dragged onto another page in the sidebar to move it there.
+   */
+  function makePagesDroppable() {
+    const $pages = $("#pages-list .page-item");
+
+    if (!$pages.length || typeof $pages.droppable !== "function") {
+      return;
+    }
+
+    $pages.droppable({
+      accept: ".field-item",
+      hoverClass: "page-item-drop-target",
+      tolerance: "pointer",
+      drop: function (event, ui) {
+        const targetPageIndex = $(this).data("index");
+        const fieldId = ui.draggable.data("field-id");
+
+        // Dropping onto the page it already belongs to is a no-op
+        if (targetPageIndex === currentPageIndex) {
+          return;
+        }
+
+        crossPageDrop = true;
+
+        // Undo whatever the drag did to the DOM; the re-render below rebuilds
+        // the list from formData, which is the source of truth
+        const $list = $(".fields-list");
+        if ($list.data("ui-sortable")) {
+          $list.sortable("cancel");
+        }
+
+        moveFieldToPage(fieldId, targetPageIndex);
+      },
+    });
+  }
+
+  /**
+   * Move a field to another page, appending it to the end of that page.
+   *
+   * Identified by field id rather than index: the sortable may already have
+   * shifted positions during the same drag.
+   */
+  function moveFieldToPage(fieldId, targetPageIndex) {
+    const source = formData.pages[currentPageIndex];
+    const target = formData.pages[targetPageIndex];
+
+    if (!source || !target || !fieldId) {
+      return;
+    }
+
+    const fromIndex = source.fields.findIndex(function (f) {
+      return f.id === fieldId;
+    });
+
+    if (fromIndex === -1) {
+      return;
+    }
+
+    const field = source.fields.splice(fromIndex, 1)[0];
+    target.fields.push(field);
+
+    // The properties panel was describing a field that is no longer on
+    // this page
+    currentFieldIndex = null;
+
+    renderPages();
+    renderCurrentPage();
+
+    FormBuilderNotifications.success(
+      '"' +
+        (field.label || "Field") +
+        '" moved to Page ' +
+        (targetPageIndex + 1),
+      "Field Moved"
+    );
   }
 
   function moveField(fromIndex, toIndex) {
