@@ -27,7 +27,7 @@ A standalone HTML-CSS-JS form builder that creates paginated forms with configur
 
 1. Go to **Konstruct Form Builder** → **Add New**
 2. Enter a form name and slug
-3. Click field types in the sidebar to add fields
+3. Click field types in the sidebar to add fields (drag a field by its row to reorder, or use the Up/Down arrows)
 4. Configure each field: label, name, placeholder, required status
 5. Add more pages using the "Add Page" button
 6. Configure webhook URL for each page (optional)

@@ -560,6 +560,9 @@ Best regards,
     $pageEditor.append($fieldsList);
     $editor.append($pageEditor);
 
+    // Sortable must be initialised after the list is in the document
+    makeFieldsSortable();
+
     renderPageProperties();
 
     // Update recipient field dropdowns after rendering (delayed to ensure DOM is ready)
@@ -641,6 +644,54 @@ Best regards,
   /**
    * Move field from one position to another
    */
+  /**
+   * Enable drag-and-drop reordering of fields.
+   *
+   * The Up/Down buttons are kept: they remain the only way to reorder with a
+   * keyboard, and dragging is awkward on a touch screen.
+   */
+  function makeFieldsSortable() {
+    const $list = $(".fields-list");
+
+    if (!$list.length || typeof $list.sortable !== "function") {
+      // jQuery UI is a WordPress core dependency, so this only happens if
+      // something has deregistered it. The Up/Down buttons still work.
+      return;
+    }
+
+    let startIndex = null;
+
+    $list.sortable({
+      items: "> .field-item",
+      handle: ".field-header",
+      // Without this, pressing Edit or Delete starts a drag instead
+      cancel: "button, input, select, textarea, a",
+      axis: "y",
+      tolerance: "pointer",
+      placeholder: "field-item-placeholder",
+      forcePlaceholderSize: true,
+      start: function (event, ui) {
+        startIndex = ui.item.index();
+        ui.item.addClass("is-dragging");
+      },
+      stop: function (event, ui) {
+        ui.item.removeClass("is-dragging");
+      },
+      update: function (event, ui) {
+        const toIndex = ui.item.index();
+
+        if (startIndex === null || toIndex === startIndex) {
+          return;
+        }
+
+        // moveField re-renders, which rebuilds the list from formData and
+        // discards whatever the drag left in the DOM
+        moveField(startIndex, toIndex);
+        startIndex = null;
+      },
+    });
+  }
+
   function moveField(fromIndex, toIndex) {
     const page = formData.pages[currentPageIndex];
     const fields = page.fields;

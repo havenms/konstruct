@@ -1327,3 +1327,29 @@
 .field-props-back:hover {
   text-decoration: underline;
 }
+
+/* Drag-and-drop field reordering */
+.fields-list .field-header {
+  cursor: grab;
+}
+
+.fields-list .field-header:active {
+  cursor: grabbing;
+}
+
+/* Buttons inside the header are excluded from dragging */
+.fields-list .field-header button {
+  cursor: pointer;
+}
+
+.field-item.is-dragging {
+  opacity: 0.85;
+  box-shadow: var(--shadow-lg);
+}
+
+.field-item-placeholder {
+  border: 2px dashed var(--color-primary);
+  border-radius: var(--radius-md);
+  background: rgba(0, 113, 227, 0.04);
+  margin-bottom: var(--spacing-sm);
+}
