@@ -78,7 +78,8 @@ Best regards,
                 'enabled' => false,
                 'pixel_id' => '',
                 'event' => 'Lead',
-                'track_steps' => false
+                'track_steps' => false,
+                'fire_on_page' => 0
             )
         );
     }

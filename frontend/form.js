@@ -498,9 +498,16 @@
     // Send step notification email (independent of webhooks)
     this.sendStepNotification(this.currentPage);
 
-    // Fire the custom event for the step just completed. Not the conversion:
-    // that stays on submit so one person is never counted as several leads.
+    // The step event, which is not a conversion
     this.trackFacebookPixelStep(this.currentPage);
+
+    // The conversion, if this form fires it on a page rather than on submit.
+    // Useful when the last page only confirms and collects nothing, so the
+    // lead is really won earlier.
+    const pixel = this.config.facebook_pixel;
+    if (pixel && pixel.enabled && parseInt(pixel.fire_on_page, 10) === this.currentPage) {
+      this.trackFacebookPixelEvent();
+    }
 
     // Execute custom JS if present
     if (currentPageConfig.customJS && currentPageConfig.customJS.trim()) {
@@ -658,6 +665,13 @@
     if (!pixel || !pixel.enabled || !pixel.event) {
       return;
     }
+
+    // One conversion per visitor. Going Back and forward again, or any other
+    // route that reaches this twice, must not report a second lead.
+    if (this.facebookPixelConversionSent) {
+      return;
+    }
+    this.facebookPixelConversionSent = true;
 
     if (typeof window.fbq !== "function") {
       // The base code is only printed when the pixel is configured, so this

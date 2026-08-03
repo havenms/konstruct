@@ -82,9 +82,17 @@ Enter a Pixel ID, choose an event, save. No custom JavaScript.
 
 Available events: `Lead`, `CompleteRegistration`, `Contact`, `Schedule`, `SubmitApplication`, `Subscribe`, `InitiateCheckout`, `AddToCart`, `ViewContent`, `Purchase`.
 
+**Choosing when the conversion fires**
+
+By default the conversion fires when the form is submitted. The **Fire it on** dropdown can move it to any earlier page instead.
+
+This matters when the last page only confirms and collects nothing: a visitor who fills everything in and then closes the tab on that screen is a real lead who would otherwise never be counted. Setting the conversion to fire on the page that captures the details fixes that.
+
+It always fires **once** per visitor, whichever page is chosen. The last page is not offered, since it has no Next button and is the same as firing on submit. If pages are later deleted and the chosen one no longer exists, it falls back to firing on submit rather than never firing at all.
+
 **How it works**
 
-The pixel base code is printed in the page `<head>` when the page loads, before the form renders. `PageView` fires immediately; the event you selected fires once, when the form is completed.
+The pixel base code is printed in the page `<head>` when the page loads, before the form renders. `PageView` fires immediately; the conversion fires once, at the moment configured above.
 
 This ordering matters. Installing a pixel through Custom JS does not work reliably:
 

@@ -406,12 +406,16 @@ Best regards,
         pixel_id: "",
         event: "Lead",
         track_steps: false,
+        fire_on_page: 0,
       };
     }
 
     // Forms saved before step tracking existed
     if (typeof formData.facebook_pixel.track_steps !== "boolean") {
       formData.facebook_pixel.track_steps = false;
+    }
+    if (typeof formData.facebook_pixel.fire_on_page !== "number") {
+      formData.facebook_pixel.fire_on_page = 0;
     }
 
     // Ensure all notification properties exist (for backward compatibility)
@@ -1225,6 +1229,33 @@ Best regards,
         '<small class="fb-pixel-hint">Sent once, when the form is completed. The pixel itself loads with the page, so Meta Pixel Helper will detect it.</small>'
     );
 
+    // When the conversion fires. Options are built from the current pages, so
+    // a page that no longer exists can never be selected.
+    let fireOptions =
+      '<option value="0"' +
+      (formData.facebook_pixel.fire_on_page ? "" : " selected") +
+      ">When the form is submitted</option>";
+
+    // The last page has no Next button, so it is the same as "on submit"
+    for (let i = 1; i < formData.pages.length; i++) {
+      fireOptions +=
+        '<option value="' +
+        i +
+        '"' +
+        (formData.facebook_pixel.fire_on_page === i ? " selected" : "") +
+        ">After page " +
+        i +
+        "</option>";
+    }
+
+    $pixelConfig.append(
+      "<label>Fire it on<br>" +
+        '<select id="fb-pixel-fire-on">' +
+        fireOptions +
+        "</select></label>" +
+        '<small class="fb-pixel-hint">Leave on submit unless your last page only confirms and collects nothing. In that case fire it on the page where you actually capture the details, so a visitor who stops at the confirmation screen still counts.</small>'
+    );
+
     // Optional per-step custom events, for retargeting people who drop off
     $pixelConfig.append(
       '<label class="fb-pixel-steps-toggle"><input type="checkbox" id="fb-pixel-track-steps" ' +
@@ -1353,6 +1384,12 @@ Best regards,
       .off("change")
       .on("change", function () {
         formData.facebook_pixel.event = $(this).val();
+      });
+
+    $("#fb-pixel-fire-on")
+      .off("change")
+      .on("change", function () {
+        formData.facebook_pixel.fire_on_page = parseInt($(this).val(), 10) || 0;
       });
 
     $("#fb-pixel-track-steps")

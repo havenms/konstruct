@@ -56,6 +56,9 @@ class Form_Builder_Facebook_Pixel_Handler {
             'pixel_id'    => '',
             'event'       => 'Lead',
             'track_steps' => false,
+            // 0 means "when the form is submitted"; a positive number means
+            // "after that page is completed"
+            'fire_on_page' => 0,
         );
 
         if (!is_array($form_config) || empty($form_config['facebook_pixel']) || !is_array($form_config['facebook_pixel'])) {
@@ -64,12 +67,44 @@ class Form_Builder_Facebook_Pixel_Handler {
 
         $settings = array_merge($defaults, $form_config['facebook_pixel']);
 
+        $page_count = (is_array($form_config) && !empty($form_config['pages']))
+            ? count($form_config['pages'])
+            : 0;
+
         return array(
-            'enabled'     => !empty($settings['enabled']),
-            'pixel_id'    => $this->clean_pixel_id($settings['pixel_id']),
-            'event'       => $this->normalise_event($settings['event']),
-            'track_steps' => !empty($settings['track_steps']),
+            'enabled'      => !empty($settings['enabled']),
+            'pixel_id'     => $this->clean_pixel_id($settings['pixel_id']),
+            'event'        => $this->normalise_event($settings['event']),
+            'track_steps'  => !empty($settings['track_steps']),
+            'fire_on_page' => $this->normalise_fire_on_page($settings['fire_on_page'], $page_count),
         );
+    }
+
+    /**
+     * Decide which page completion fires the conversion.
+     *
+     * Falls back to firing on submit when the stored page no longer exists,
+     * which happens when pages are deleted after the setting was saved. The
+     * alternative would be a conversion that silently never fires.
+     *
+     * @param mixed $value
+     * @param int   $page_count Pages the form currently has
+     * @return int 0 for submit, otherwise the page number
+     */
+    public function normalise_fire_on_page($value, $page_count) {
+        $page = intval($value);
+
+        if ($page < 1) {
+            return 0;
+        }
+
+        // The last page has no Next button, so "after the last page" is the
+        // same thing as firing on submit
+        if ($page_count > 0 && $page >= $page_count) {
+            return 0;
+        }
+
+        return $page;
     }
 
     /**
