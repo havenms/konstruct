@@ -77,7 +77,8 @@ Best regards,
             'facebook_pixel' => array(
                 'enabled' => false,
                 'pixel_id' => '',
-                'event' => 'Lead'
+                'event' => 'Lead',
+                'track_steps' => false
             )
         );
     }

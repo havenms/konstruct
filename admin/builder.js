@@ -16,6 +16,32 @@
 
   // Standard Meta events. Custom event names are deliberately not offered:
   // they do not appear in Ads Manager reporting without extra setup.
+  /**
+   * Mirrors Form_Builder_Facebook_Pixel_Handler::get_step_event_prefix().
+   * Shown in the builder so the administrator can copy the exact names into
+   * the Facebook audience builder.
+   */
+  function fbPixelStepPrefix() {
+    const slug = $("#form-slug").val() || $("#form-name").val() || "";
+    const words = slug.replace(/[^A-Za-z0-9]+/g, " ").trim();
+    const name = words === ""
+      ? "Form"
+      : words
+          .toLowerCase()
+          .split(" ")
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join("");
+
+    let prefix = "Konstruct_" + name + "_Step";
+
+    // Meta caps custom event names at 40 characters; leave room for the number
+    if (prefix.length > 38) {
+      prefix = prefix.substring(0, 38);
+    }
+
+    return prefix;
+  }
+
   const FB_PIXEL_EVENTS = [
     { value: "Lead", label: "Lead - someone submitted an enquiry" },
     { value: "CompleteRegistration", label: "CompleteRegistration - someone signed up" },
@@ -379,7 +405,13 @@ Best regards,
         enabled: false,
         pixel_id: "",
         event: "Lead",
+        track_steps: false,
       };
+    }
+
+    // Forms saved before step tracking existed
+    if (typeof formData.facebook_pixel.track_steps !== "boolean") {
+      formData.facebook_pixel.track_steps = false;
     }
 
     // Ensure all notification properties exist (for backward compatibility)
@@ -1193,6 +1225,39 @@ Best regards,
         '<small class="fb-pixel-hint">Sent once, when the form is completed. The pixel itself loads with the page, so Meta Pixel Helper will detect it.</small>'
     );
 
+    // Optional per-step custom events, for retargeting people who drop off
+    $pixelConfig.append(
+      '<label class="fb-pixel-steps-toggle"><input type="checkbox" id="fb-pixel-track-steps" ' +
+        (formData.facebook_pixel.track_steps ? "checked" : "") +
+        "> <span>Also track each step (for retargeting drop-offs)</span></label>"
+    );
+
+    const $stepDetail = $(
+      '<div class="fb-pixel-steps-detail" style="' +
+        (formData.facebook_pixel.track_steps ? "" : "display:none") +
+        '">'
+    );
+
+    $stepDetail.append(
+      '<small class="fb-pixel-hint">Sends a custom event each time someone completes a page, so you can build a Facebook audience of people who started but never finished. These are <strong>not</strong> counted as conversions.</small>'
+    );
+
+    const stepPrefix = fbPixelStepPrefix();
+    let stepNames = "";
+    formData.pages.forEach(function (page, i) {
+      stepNames += "<li><code>" + escapeHtml(stepPrefix + (i + 1)) + "</code></li>";
+    });
+
+    $stepDetail.append(
+      '<div class="fb-pixel-step-names"><strong>Event names for this form</strong><ul>' +
+        stepNames +
+        "</ul>" +
+        '<small class="fb-pixel-hint">In Ads Manager these appear under Audiences when you create a Custom Audience. Include a step event and exclude your conversion event to target people who dropped off.</small>' +
+        "</div>"
+    );
+
+    $pixelConfig.append($stepDetail);
+
     $pixel.append($pixelConfig);
     $pixelContent.append($pixel);
     $pixelAccordion.append($pixelContent);
@@ -1288,6 +1353,13 @@ Best regards,
       .off("change")
       .on("change", function () {
         formData.facebook_pixel.event = $(this).val();
+      });
+
+    $("#fb-pixel-track-steps")
+      .off("change")
+      .on("change", function () {
+        formData.facebook_pixel.track_steps = $(this).is(":checked");
+        $(".fb-pixel-steps-detail").toggle($(this).is(":checked"));
       });
 
     // Bind email notification events

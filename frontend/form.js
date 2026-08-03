@@ -498,6 +498,10 @@
     // Send step notification email (independent of webhooks)
     this.sendStepNotification(this.currentPage);
 
+    // Fire the custom event for the step just completed. Not the conversion:
+    // that stays on submit so one person is never counted as several leads.
+    this.trackFacebookPixelStep(this.currentPage);
+
     // Execute custom JS if present
     if (currentPageConfig.customJS && currentPageConfig.customJS.trim()) {
       // Add a small delay to ensure other scripts (like Facebook Pixel) are ready
@@ -672,6 +676,39 @@
       });
     } catch (e) {
       console.error("Form Builder: Meta Pixel event failed:", e);
+    }
+  };
+
+  /**
+   * Fire a custom event for a completed step.
+   *
+   * trackCustom, never track: a standard event name here would pollute what
+   * that event means everywhere else in the ad account. These names exist to
+   * build retargeting audiences of people who started the form and stopped,
+   * which is a group the webhooks cannot reach - they may have typed nothing.
+   */
+  FormBuilderInstance.prototype.trackFacebookPixelStep = function (pageNumber) {
+    const pixel = this.config.facebook_pixel;
+
+    if (!pixel || !pixel.enabled || !pixel.track_steps) {
+      return;
+    }
+
+    if (typeof window.fbq !== "function") {
+      return;
+    }
+
+    const prefix = pixel.step_event_prefix || "Konstruct_Form_Step";
+
+    try {
+      window.fbq("trackCustom", prefix + pageNumber, {
+        // Read from a data attribute, so cast it: a string here would make
+        // number comparisons in the audience builder behave oddly
+        form_id: parseInt(this.formId, 10),
+        page_number: pageNumber,
+      });
+    } catch (e) {
+      console.error("Form Builder: Meta Pixel step event failed:", e);
     }
   };
 

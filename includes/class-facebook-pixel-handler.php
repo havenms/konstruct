@@ -40,16 +40,22 @@ class Form_Builder_Facebook_Pixel_Handler {
     }
 
     /**
+     * Longest name Meta accepts for a custom event
+     */
+    const MAX_EVENT_NAME_LENGTH = 40;
+
+    /**
      * Read the pixel settings from a form configuration
      *
      * @param array $form_config
-     * @return array{enabled:bool,pixel_id:string,event:string}
+     * @return array{enabled:bool,pixel_id:string,event:string,track_steps:bool}
      */
     public function get_form_settings($form_config) {
         $defaults = array(
-            'enabled'  => false,
-            'pixel_id' => '',
-            'event'    => 'Lead',
+            'enabled'     => false,
+            'pixel_id'    => '',
+            'event'       => 'Lead',
+            'track_steps' => false,
         );
 
         if (!is_array($form_config) || empty($form_config['facebook_pixel']) || !is_array($form_config['facebook_pixel'])) {
@@ -59,10 +65,57 @@ class Form_Builder_Facebook_Pixel_Handler {
         $settings = array_merge($defaults, $form_config['facebook_pixel']);
 
         return array(
-            'enabled'  => !empty($settings['enabled']),
-            'pixel_id' => $this->clean_pixel_id($settings['pixel_id']),
-            'event'    => $this->normalise_event($settings['event']),
+            'enabled'     => !empty($settings['enabled']),
+            'pixel_id'    => $this->clean_pixel_id($settings['pixel_id']),
+            'event'       => $this->normalise_event($settings['event']),
+            'track_steps' => !empty($settings['track_steps']),
         );
+    }
+
+    /**
+     * Build the prefix for this form's per-step custom events.
+     *
+     * Names are generated rather than typed so they stay predictable: an
+     * audience built on "Konstruct_ContactUs_Step2" keeps working when the
+     * form is edited. The step number is appended by the frontend.
+     *
+     * @param array $form Form row, or anything with a form_slug
+     * @return string e.g. "Konstruct_ContactUs_Step"
+     */
+    public function get_step_event_prefix($form) {
+        $slug = '';
+        if (is_array($form) && isset($form['form_slug'])) {
+            $slug = (string) $form['form_slug'];
+        } elseif (is_string($form)) {
+            $slug = $form;
+        }
+
+        // "contact-us" becomes "ContactUs": Meta allows a limited character
+        // set, and camel case keeps the name readable in the audience builder
+        $words = preg_replace('/[^A-Za-z0-9]+/', ' ', $slug);
+        $words = trim($words);
+        $name  = $words === '' ? 'Form' : str_replace(' ', '', ucwords(strtolower($words)));
+
+        $prefix = 'Konstruct_' . $name . '_Step';
+
+        // Leave room for a two digit step number inside Meta's limit
+        $limit = self::MAX_EVENT_NAME_LENGTH - 2;
+        if (strlen($prefix) > $limit) {
+            $prefix = substr($prefix, 0, $limit);
+        }
+
+        return $prefix;
+    }
+
+    /**
+     * The full custom event name for a given step
+     *
+     * @param array $form
+     * @param int   $step
+     * @return string
+     */
+    public function get_step_event_name($form, $step) {
+        return $this->get_step_event_prefix($form) . intval($step);
     }
 
     /**

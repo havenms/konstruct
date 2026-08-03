@@ -409,6 +409,11 @@ class Form_Builder_Renderer {
         if (class_exists('Form_Builder_Facebook_Pixel_Handler')) {
             $pixel = new Form_Builder_Facebook_Pixel_Handler();
             $public_config['facebook_pixel'] = $pixel->get_form_settings($public_config);
+
+            // Generated server-side so the names stay stable and match what
+            // the builder shows the administrator
+            $public_config['facebook_pixel']['step_event_prefix'] =
+                $pixel->get_step_event_prefix($form);
         }
 
         // Localize script with form data using instance ID

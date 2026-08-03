@@ -93,6 +93,21 @@ This ordering matters. Installing a pixel through Custom JS does not work reliab
 
 Loading the base code with the page fixes both. Pixel Helper detects it normally, and `fbq` queues any event sent before the script finishes.
 
+**Tracking drop-offs (optional)**
+
+Tick **Also track each step** to send a custom event every time someone completes a page. These are *not* conversions — they exist so you can build a Facebook audience of people who started the form and never finished, including people who typed nothing and so left no record in your CRM.
+
+Event names are generated from the form slug and shown in the panel, for example:
+
+```
+Konstruct_ContactUs_Step1
+Konstruct_ContactUs_Step2
+```
+
+To retarget drop-offs, create a Custom Audience in Ads Manager that **includes** a step event and **excludes** your conversion event.
+
+These use `trackCustom` rather than `track`, so they never interfere with what a standard event means elsewhere in your ad account. They appear in the audience builder automatically; adding them to Ads Manager reporting columns requires defining a Custom Conversion.
+
 **Notes**
 
 - Two forms on one page sharing a Pixel ID are initialised once, not twice
