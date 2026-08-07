@@ -402,13 +402,27 @@ class Form_Builder_Renderer {
             'nonce' => wp_create_nonce('wp_rest'),
         ));
         
+        // Normalise the pixel block so the frontend can rely on its shape.
+        // The pixel ID is public by design - it appears in the page head - so
+        // nothing here needs stripping.
+        $public_config = $form['form_config'];
+        if (class_exists('Form_Builder_Facebook_Pixel_Handler')) {
+            $pixel = new Form_Builder_Facebook_Pixel_Handler();
+            $public_config['facebook_pixel'] = $pixel->get_form_settings($form['form_config']);
+
+            // Generated server-side so the names stay stable and match what
+            // the builder shows the administrator
+            $public_config['facebook_pixel']['step_event_prefix'] =
+                $pixel->get_step_event_prefix($form);
+        }
+
         // Localize script with form data using instance ID
         wp_add_inline_script('form-builder-frontend',
             'window.formBuilderData = window.formBuilderData || {}; ' .
             'window.formBuilderData["' . esc_js($form_instance_id) . '"] = ' . json_encode(array(
                 'formId' => $form['id'],
                 'formSlug' => $form['form_slug'],
-                'formConfig' => $form['form_config'],
+                'formConfig' => $public_config,
                 'submissionUuid' => $this->generate_uuid(),
             )) . ';',
             'after'

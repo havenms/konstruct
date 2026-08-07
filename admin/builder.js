@@ -10,6 +10,50 @@
   let formData = {};
   let currentPageIndex = 0;
   let currentFieldIndex = null;
+  // Set when a field is dropped onto another page, so the sortable's own
+  // update handler does not additionally treat it as a same-page reorder
+  let crossPageDrop = false;
+
+  // Standard Meta events. Custom event names are deliberately not offered:
+  // they do not appear in Ads Manager reporting without extra setup.
+  /**
+   * Mirrors Form_Builder_Facebook_Pixel_Handler::get_step_event_prefix().
+   * Shown in the builder so the administrator can copy the exact names into
+   * the Facebook audience builder.
+   */
+  function fbPixelStepPrefix() {
+    const slug = $("#form-slug").val() || $("#form-name").val() || "";
+    const words = slug.replace(/[^A-Za-z0-9]+/g, " ").trim();
+    const name = words === ""
+      ? "Form"
+      : words
+          .toLowerCase()
+          .split(" ")
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join("");
+
+    let prefix = "Konstruct_" + name + "_Step";
+
+    // Meta caps custom event names at 40 characters; leave room for the number
+    if (prefix.length > 38) {
+      prefix = prefix.substring(0, 38);
+    }
+
+    return prefix;
+  }
+
+  const FB_PIXEL_EVENTS = [
+    { value: "Lead", label: "Lead - someone submitted an enquiry" },
+    { value: "CompleteRegistration", label: "CompleteRegistration - someone signed up" },
+    { value: "Contact", label: "Contact - someone got in touch" },
+    { value: "Schedule", label: "Schedule - someone booked an appointment" },
+    { value: "SubmitApplication", label: "SubmitApplication - someone applied" },
+    { value: "Subscribe", label: "Subscribe - someone subscribed" },
+    { value: "InitiateCheckout", label: "InitiateCheckout - someone started checking out" },
+    { value: "AddToCart", label: "AddToCart - someone added an item" },
+    { value: "ViewContent", label: "ViewContent - someone viewed a key page" },
+    { value: "Purchase", label: "Purchase - someone bought something" },
+  ];
 
   /**
    * Cache Busting Utilities
@@ -355,6 +399,25 @@ Best regards,
       };
     }
 
+    // Initialize Facebook Pixel settings if not present
+    if (!formData.facebook_pixel) {
+      formData.facebook_pixel = {
+        enabled: false,
+        pixel_id: "",
+        event: "Lead",
+        track_steps: false,
+        fire_on_page: 0,
+      };
+    }
+
+    // Forms saved before step tracking existed
+    if (typeof formData.facebook_pixel.track_steps !== "boolean") {
+      formData.facebook_pixel.track_steps = false;
+    }
+    if (typeof formData.facebook_pixel.fire_on_page !== "number") {
+      formData.facebook_pixel.fire_on_page = 0;
+    }
+
     // Ensure all notification properties exist (for backward compatibility)
     if (
       formData.notifications.step_notifications &&
@@ -427,6 +490,8 @@ Best regards,
       addField($(this).data("type"));
     });
 
+    makeFieldTypesDraggable();
+
     // Form name generates slug
     $("#form-name").on("input", function () {
       if (!$("#form-slug").val()) {
@@ -473,6 +538,8 @@ Best regards,
 
       $list.append($page);
     });
+
+    makePagesDroppable();
 
     // Attach delete handlers after rendering
     setTimeout(() => {
@@ -536,6 +603,10 @@ Best regards,
     $pageEditor.append($fieldsList);
     $editor.append($pageEditor);
 
+    // Both must be initialised after the markup is in the document
+    makeFieldsSortable();
+    makePageEditorDroppable();
+
     renderPageProperties();
 
     // Update recipient field dropdowns after rendering (delayed to ensure DOM is ready)
@@ -553,7 +624,13 @@ Best regards,
     const isFirst = index === 0;
     const isLast = index === totalFields - 1;
 
-    const $field = $('<div class="field-item" data-index="' + index + '">');
+    const $field = $(
+      '<div class="field-item" data-index="' +
+        index +
+        '" data-field-id="' +
+        escapeHtml(field.id || "") +
+        '">'
+    );
 
     const $header = $('<div class="field-header">');
 
@@ -617,6 +694,235 @@ Best regards,
   /**
    * Move field from one position to another
    */
+  /**
+   * Where a drop at this vertical position should insert.
+   * Returns the index of the first field whose midpoint is below the pointer,
+   * or the field count to append.
+   */
+  function insertIndexForY(pageY) {
+    const $items = $(".fields-list > .field-item");
+
+    for (let i = 0; i < $items.length; i++) {
+      const box = $items[i].getBoundingClientRect();
+      const midpoint = box.top + window.pageYOffset + box.height / 2;
+
+      if (pageY < midpoint) {
+        return i;
+      }
+    }
+
+    return $items.length;
+  }
+
+  /**
+   * Let a field type be dragged from the sidebar onto the page.
+   *
+   * Deliberately not using draggable's connectToSortable: handing a foreign
+   * helper to an existing sortable depends on an internal handshake that is
+   * easily broken by the helper's markup or its offset parent, and it fails
+   * silently when it does break. A plain droppable on the page container is
+   * predictable, and the insert position is calculated here rather than
+   * inferred from where jQuery UI happened to park the helper.
+   */
+  function makeFieldTypesDraggable() {
+    const $types = $(".field-type-btn");
+
+    if (!$types.length || typeof $types.draggable !== "function") {
+      // Clicking a field type still adds it
+      return;
+    }
+
+    $types.draggable({
+      helper: "clone",
+      // jQuery UI's mouse widget defaults to
+      // cancel: "input, textarea, button, select, option" and refuses to start
+      // a drag when the mousedown target matches. The field types are literal
+      // <button> elements, so they match their own cancel selector and no drag
+      // ever begins - silently, with no error and no start event.
+      cancel: false,
+      // Escape the sidebar so the helper stays visible over the page column
+      appendTo: "body",
+      zIndex: 1000,
+      // Without a threshold, an ordinary click registers as a drag
+      distance: 6,
+      revert: "invalid",
+      revertDuration: 150,
+      cursor: "grabbing",
+      cursorAt: { top: 18, left: 20 },
+      start: function (event, ui) {
+        ui.helper.addClass("field-type-drag-helper");
+        $(".page-editor").addClass("is-accepting-field");
+      },
+      stop: function () {
+        $(".page-editor").removeClass("is-accepting-field");
+      },
+    });
+  }
+
+  /**
+   * Accept a field type dropped anywhere on the page editor.
+   */
+  function makePageEditorDroppable() {
+    const $editor = $(".page-editor");
+
+    if (!$editor.length || typeof $editor.droppable !== "function") {
+      return;
+    }
+
+    $editor.droppable({
+      accept: ".field-type-btn",
+      tolerance: "pointer",
+      hoverClass: "is-drop-target",
+      drop: function (event, ui) {
+        const type = ui.draggable.data("type");
+
+        if (!type) {
+          return;
+        }
+
+        // event.pageY is where the pointer was released. ui.offset is the
+        // helper's own top, used only if the event carries no position.
+        const pageY =
+          typeof event.pageY === "number" ? event.pageY : ui.offset.top;
+
+        addField(type, insertIndexForY(pageY));
+      },
+    });
+  }
+
+  /**
+   * Enable drag-and-drop reordering of fields.
+   *
+   * The Up/Down buttons are kept: they remain the only way to reorder with a
+   * keyboard, and dragging is awkward on a touch screen.
+   */
+  function makeFieldsSortable() {
+    const $list = $(".fields-list");
+
+    if (!$list.length || typeof $list.sortable !== "function") {
+      // jQuery UI is a WordPress core dependency, so this only happens if
+      // something has deregistered it. The Up/Down buttons still work.
+      return;
+    }
+
+    let startIndex = null;
+
+    $list.sortable({
+      items: "> .field-item",
+      handle: ".field-header",
+      // Without this, pressing Edit or Delete starts a drag instead
+      cancel: "button, input, select, textarea, a",
+      axis: "y",
+      tolerance: "pointer",
+      placeholder: "field-item-placeholder",
+      forcePlaceholderSize: true,
+      start: function (event, ui) {
+        startIndex = ui.item.index();
+        crossPageDrop = false;
+        ui.item.addClass("is-dragging");
+      },
+      stop: function (event, ui) {
+        ui.item.removeClass("is-dragging");
+      },
+      update: function (event, ui) {
+        // A drop onto another page has already moved the field and re-rendered
+        if (crossPageDrop) {
+          crossPageDrop = false;
+          return;
+        }
+
+        const toIndex = ui.item.index();
+
+        if (startIndex === null || toIndex === startIndex) {
+          return;
+        }
+
+        // moveField re-renders, which rebuilds the list from formData and
+        // discards whatever the drag left in the DOM
+        moveField(startIndex, toIndex);
+        startIndex = null;
+      },
+    });
+  }
+
+  /**
+   * Let a field be dragged onto another page in the sidebar to move it there.
+   */
+  function makePagesDroppable() {
+    const $pages = $("#pages-list .page-item");
+
+    if (!$pages.length || typeof $pages.droppable !== "function") {
+      return;
+    }
+
+    $pages.droppable({
+      accept: ".field-item",
+      hoverClass: "page-item-drop-target",
+      tolerance: "pointer",
+      drop: function (event, ui) {
+        const targetPageIndex = $(this).data("index");
+        const fieldId = ui.draggable.data("field-id");
+
+        // Dropping onto the page it already belongs to is a no-op
+        if (targetPageIndex === currentPageIndex) {
+          return;
+        }
+
+        crossPageDrop = true;
+
+        // Undo whatever the drag did to the DOM; the re-render below rebuilds
+        // the list from formData, which is the source of truth
+        const $list = $(".fields-list");
+        if ($list.data("ui-sortable")) {
+          $list.sortable("cancel");
+        }
+
+        moveFieldToPage(fieldId, targetPageIndex);
+      },
+    });
+  }
+
+  /**
+   * Move a field to another page, appending it to the end of that page.
+   *
+   * Identified by field id rather than index: the sortable may already have
+   * shifted positions during the same drag.
+   */
+  function moveFieldToPage(fieldId, targetPageIndex) {
+    const source = formData.pages[currentPageIndex];
+    const target = formData.pages[targetPageIndex];
+
+    if (!source || !target || !fieldId) {
+      return;
+    }
+
+    const fromIndex = source.fields.findIndex(function (f) {
+      return f.id === fieldId;
+    });
+
+    if (fromIndex === -1) {
+      return;
+    }
+
+    const field = source.fields.splice(fromIndex, 1)[0];
+    target.fields.push(field);
+
+    // The properties panel was describing a field that is no longer on
+    // this page
+    currentFieldIndex = null;
+
+    renderPages();
+    renderCurrentPage();
+
+    FormBuilderNotifications.success(
+      '"' +
+        (field.label || "Field") +
+        '" moved to Page ' +
+        (targetPageIndex + 1),
+      "Field Moved"
+    );
+  }
+
   function moveField(fromIndex, toIndex) {
     const page = formData.pages[currentPageIndex];
     const fields = page.fields;
@@ -868,6 +1174,126 @@ Best regards,
     $emailAccordion.append($emailContent);
     $accordions.append($emailAccordion);
 
+    // Facebook Pixel Accordion
+    const $pixelAccordion = $('<div class="accordion-item">');
+    const $pixelHeader = $(
+      '<button type="button" class="accordion-header" aria-expanded="false">'
+    );
+    $pixelHeader.append('<span class="accordion-title">Facebook Pixel</span>');
+    $pixelHeader.append(
+      '<svg class="accordion-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L1 4H11L6 9Z" fill="currentColor"/></svg>'
+    );
+    $pixelAccordion.append($pixelHeader);
+    const $pixelContent = $(
+      '<div class="accordion-content" style="display: none;">'
+    );
+
+    const $pixel = $('<div class="property-group">');
+    $pixel.append(
+      '<label><input type="checkbox" id="fb-pixel-enabled" ' +
+        (formData.facebook_pixel.enabled ? "checked" : "") +
+        "> <span>Track submissions with Facebook Pixel</span></label>"
+    );
+
+    const $pixelConfig = $(
+      '<div class="fb-pixel-config" style="' +
+        (formData.facebook_pixel.enabled ? "" : "display:none") +
+        '">'
+    );
+
+    $pixelConfig.append(
+      "<label>Pixel ID<br>" +
+        '<input type="text" id="fb-pixel-id" class="regular-text" inputmode="numeric" placeholder="e.g. 1234567890123456" value="' +
+        escapeHtml(formData.facebook_pixel.pixel_id || "") +
+        '"></label>' +
+        '<small class="fb-pixel-hint">Find this in Meta <strong>Events Manager &rarr; Data Sources</strong>. Paste the number only, not the whole snippet.</small>'
+    );
+
+    let eventOptions = "";
+    FB_PIXEL_EVENTS.forEach(function (evt) {
+      eventOptions +=
+        '<option value="' +
+        escapeHtml(evt.value) +
+        '"' +
+        (formData.facebook_pixel.event === evt.value ? " selected" : "") +
+        ">" +
+        escapeHtml(evt.label) +
+        "</option>";
+    });
+
+    $pixelConfig.append(
+      "<label>Event to fire on submit<br>" +
+        '<select id="fb-pixel-event">' +
+        eventOptions +
+        "</select></label>" +
+        '<small class="fb-pixel-hint">Sent once, when the form is completed. The pixel itself loads with the page, so Meta Pixel Helper will detect it.</small>'
+    );
+
+    // When the conversion fires. Options are built from the current pages, so
+    // a page that no longer exists can never be selected.
+    let fireOptions =
+      '<option value="0"' +
+      (formData.facebook_pixel.fire_on_page ? "" : " selected") +
+      ">When the form is submitted</option>";
+
+    // The last page has no Next button, so it is the same as "on submit"
+    for (let i = 1; i < formData.pages.length; i++) {
+      fireOptions +=
+        '<option value="' +
+        i +
+        '"' +
+        (formData.facebook_pixel.fire_on_page === i ? " selected" : "") +
+        ">After page " +
+        i +
+        "</option>";
+    }
+
+    $pixelConfig.append(
+      "<label>Fire it on<br>" +
+        '<select id="fb-pixel-fire-on">' +
+        fireOptions +
+        "</select></label>" +
+        '<small class="fb-pixel-hint">Leave on submit unless your last page only confirms and collects nothing. In that case fire it on the page where you actually capture the details, so a visitor who stops at the confirmation screen still counts.</small>'
+    );
+
+    // Optional per-step custom events, for retargeting people who drop off
+    $pixelConfig.append(
+      '<label class="fb-pixel-steps-toggle"><input type="checkbox" id="fb-pixel-track-steps" ' +
+        (formData.facebook_pixel.track_steps ? "checked" : "") +
+        "> <span>Also track each step (for retargeting drop-offs)</span></label>"
+    );
+
+    const $stepDetail = $(
+      '<div class="fb-pixel-steps-detail" style="' +
+        (formData.facebook_pixel.track_steps ? "" : "display:none") +
+        '">'
+    );
+
+    $stepDetail.append(
+      '<small class="fb-pixel-hint">Sends a custom event each time someone completes a page, so you can build a Facebook audience of people who started but never finished. These are <strong>not</strong> counted as conversions.</small>'
+    );
+
+    const stepPrefix = fbPixelStepPrefix();
+    let stepNames = "";
+    formData.pages.forEach(function (page, i) {
+      stepNames += "<li><code>" + escapeHtml(stepPrefix + (i + 1)) + "</code></li>";
+    });
+
+    $stepDetail.append(
+      '<div class="fb-pixel-step-names"><strong>Event names for this form</strong><ul>' +
+        stepNames +
+        "</ul>" +
+        '<small class="fb-pixel-hint">In Ads Manager these appear under Audiences when you create a Custom Audience. Include a step event and exclude your conversion event to target people who dropped off.</small>' +
+        "</div>"
+    );
+
+    $pixelConfig.append($stepDetail);
+
+    $pixel.append($pixelConfig);
+    $pixelContent.append($pixel);
+    $pixelAccordion.append($pixelContent);
+    $accordions.append($pixelAccordion);
+
     // Custom JavaScript Accordion
     const $jsAccordion = $('<div class="accordion-item">');
     const $jsHeader = $(
@@ -930,6 +1356,47 @@ Best regards,
       .off("input")
       .on("input", function () {
         page.webhook.url = $(this).val();
+      });
+
+    // Bind Facebook Pixel events
+    $("#fb-pixel-enabled")
+      .off("change")
+      .on("change", function () {
+        formData.facebook_pixel.enabled = $(this).is(":checked");
+        $(this)
+          .closest(".property-group")
+          .find(".fb-pixel-config")
+          .toggle($(this).is(":checked"));
+      });
+
+    $("#fb-pixel-id")
+      .off("input")
+      .on("input", function () {
+        // Pasting from Events Manager often brings spaces or stray characters
+        const digits = $(this).val().replace(/\D/g, "");
+        if (digits !== $(this).val()) {
+          $(this).val(digits);
+        }
+        formData.facebook_pixel.pixel_id = digits;
+      });
+
+    $("#fb-pixel-event")
+      .off("change")
+      .on("change", function () {
+        formData.facebook_pixel.event = $(this).val();
+      });
+
+    $("#fb-pixel-fire-on")
+      .off("change")
+      .on("change", function () {
+        formData.facebook_pixel.fire_on_page = parseInt($(this).val(), 10) || 0;
+      });
+
+    $("#fb-pixel-track-steps")
+      .off("change")
+      .on("change", function () {
+        formData.facebook_pixel.track_steps = $(this).is(":checked");
+        $(".fb-pixel-steps-detail").toggle($(this).is(":checked"));
       });
 
     // Bind email notification events
@@ -1198,6 +1665,17 @@ Best regards,
 
     const $props = $("#page-properties");
     $props.empty();
+
+    // Editing a field replaces the page settings entirely, so offer the way
+    // back rather than leaving the user stuck.
+    const $back = $(
+      '<button type="button" class="button button-small field-props-back">&larr; Back to Page Settings</button>'
+    );
+    $back.on("click", function () {
+      currentFieldIndex = null;
+      renderPageProperties();
+    });
+    $props.append($back);
 
     $props.append("<h4>Field Properties</h4>");
 
@@ -1476,7 +1954,7 @@ Best regards,
   /**
    * Add field
    */
-  function addField(type) {
+  function addField(type, insertAt) {
     const page = formData.pages[currentPageIndex];
     if (!page) return;
 
@@ -1508,8 +1986,19 @@ Best regards,
       field.button_style = "primary";
     }
 
-    page.fields.push(field);
-    currentFieldIndex = page.fields.length - 1;
+    // Dropping between existing fields inserts there; clicking appends
+    if (
+      typeof insertAt === "number" &&
+      insertAt >= 0 &&
+      insertAt < page.fields.length
+    ) {
+      page.fields.splice(insertAt, 0, field);
+      currentFieldIndex = insertAt;
+    } else {
+      page.fields.push(field);
+      currentFieldIndex = page.fields.length - 1;
+    }
+
     renderCurrentPage();
     renderFieldProperties();
   }

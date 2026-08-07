@@ -8,6 +8,7 @@ A standalone HTML-CSS-JS form builder that creates paginated forms with configur
 - **All Input Types**: Supports text, email, tel, number, textarea, select, radio, checkbox, file, date
 - **Paginated Forms**: Multi-page forms with Next/Back navigation
 - **Per-Page Webhooks**: Configure webhook URL for each page
+- **Facebook Pixel**: Enter a Pixel ID and pick an event; no JavaScript required
 - **Email Notifications**: Automatic notifications for step completion and final submission
 - **Form Persistence**: Auto-saves form data to localStorage
 - **Shortcode Embedding**: Easy form embedding via `[form_builder id="form-slug"]`
@@ -26,7 +27,7 @@ A standalone HTML-CSS-JS form builder that creates paginated forms with configur
 
 1. Go to **Konstruct Form Builder** → **Add New**
 2. Enter a form name and slug
-3. Click field types in the sidebar to add fields
+3. Add fields by dragging a type from the sidebar onto the page, or by clicking it to append one. Once added, drag a field by its row to reorder it, or drop it onto a page in the sidebar to move it there. The Up/Down arrows reorder from the keyboard
 4. Configure each field: label, name, placeholder, required status
 5. Add more pages using the "Add Page" button
 6. Configure webhook URL for each page (optional)
@@ -69,6 +70,59 @@ Or by form ID:
 ```
 [form_builder id="1"]
 ```
+
+### Facebook Pixel
+
+Enter a Pixel ID, choose an event, save. No custom JavaScript.
+
+1. Open your form and expand the **Facebook Pixel** panel
+2. Tick **Track submissions with Facebook Pixel**
+3. Paste your **Pixel ID** — the number from Meta **Events Manager → Data Sources**. Pasting extra text is fine; everything but the digits is stripped as you type
+4. Choose the **event to fire on submit**
+
+Available events: `Lead`, `CompleteRegistration`, `Contact`, `Schedule`, `SubmitApplication`, `Subscribe`, `InitiateCheckout`, `AddToCart`, `ViewContent`, `Purchase`.
+
+**Choosing when the conversion fires**
+
+By default the conversion fires when the form is submitted. The **Fire it on** dropdown can move it to any earlier page instead.
+
+This matters when the last page only confirms and collects nothing: a visitor who fills everything in and then closes the tab on that screen is a real lead who would otherwise never be counted. Setting the conversion to fire on the page that captures the details fixes that.
+
+It always fires **once** per visitor, whichever page is chosen. The last page is not offered, since it has no Next button and is the same as firing on submit. If pages are later deleted and the chosen one no longer exists, it falls back to firing on submit rather than never firing at all.
+
+**How it works**
+
+The pixel base code is printed in the page `<head>` when the page loads, before the form renders. `PageView` fires immediately; the conversion fires once, at the moment configured above.
+
+This ordering matters. Installing a pixel through Custom JS does not work reliably:
+
+- Custom JS runs inside `new Function(...)` at submit time, so at page load there is no pixel for **Meta Pixel Helper** to detect
+- `fbevents.js` may not have finished loading when the event fires, so the event is lost
+
+Loading the base code with the page fixes both. Pixel Helper detects it normally, and `fbq` queues any event sent before the script finishes.
+
+**Tracking drop-offs (optional)**
+
+Tick **Also track each step** to send a custom event every time someone completes a page. These are *not* conversions — they exist so you can build a Facebook audience of people who started the form and never finished, including people who typed nothing and so left no record in your CRM.
+
+Event names are generated from the form slug and shown in the panel, for example:
+
+```
+Konstruct_ContactUs_Step1
+Konstruct_ContactUs_Step2
+```
+
+To retarget drop-offs, create a Custom Audience in Ads Manager that **includes** a step event and **excludes** your conversion event.
+
+These use `trackCustom` rather than `track`, so they never interfere with what a standard event means elsewhere in your ad account. They appear in the audience builder automatically; adding them to Ads Manager reporting columns requires defining a Custom Conversion.
+
+**Notes**
+
+- Two forms on one page sharing a Pixel ID are initialised once, not twice
+- The submission UUID is sent as the event's `eventID`, so the event can be de-duplicated if the same conversion is later sent server-side through the Conversions API
+- Only standard Meta events are offered — a custom event name would not appear in Ads Manager reporting without extra setup
+- A `<noscript>` tracking pixel is included for visitors without JavaScript
+- Webhook behaviour is unchanged
 
 ### Webhook Configuration
 

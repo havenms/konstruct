@@ -32,10 +32,13 @@ class Form_Builder_Asset_Manager {
             $css_version
         );
         
+        // All three jQuery UI modules ship with WordPress core: sortable
+        // reorders fields, droppable moves a field to another page, and
+        // draggable lets a field type be dragged in from the sidebar
         wp_enqueue_script(
             'form-builder-admin',
             FORM_BUILDER_PLUGIN_URL . 'admin/builder.js',
-            array('jquery'),
+            array('jquery', 'jquery-ui-sortable', 'jquery-ui-droppable', 'jquery-ui-draggable'),
             $js_version,
             true
         );

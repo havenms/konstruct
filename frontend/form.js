@@ -498,6 +498,17 @@
     // Send step notification email (independent of webhooks)
     this.sendStepNotification(this.currentPage);
 
+    // The step event, which is not a conversion
+    this.trackFacebookPixelStep(this.currentPage);
+
+    // The conversion, if this form fires it on a page rather than on submit.
+    // Useful when the last page only confirms and collects nothing, so the
+    // lead is really won earlier.
+    const pixel = this.config.facebook_pixel;
+    if (pixel && pixel.enabled && parseInt(pixel.fire_on_page, 10) === this.currentPage) {
+      this.trackFacebookPixelEvent();
+    }
+
     // Execute custom JS if present
     if (currentPageConfig.customJS && currentPageConfig.customJS.trim()) {
       // Add a small delay to ensure other scripts (like Facebook Pixel) are ready
@@ -621,6 +632,9 @@
       this.sendWebhook(currentPageConfig.webhook.url, this.currentPage, true);
     }
 
+    // Fire the configured Meta Pixel event
+    this.trackFacebookPixelEvent();
+
     // Execute custom JS if present
     if (currentPageConfig.customJS) {
       try {
@@ -636,6 +650,80 @@
 
     // Clear saved data
     this.clearSavedData();
+  };
+
+  /**
+   * Fire the configured Meta Pixel event for this submission.
+   *
+   * The pixel itself is initialised in the page head, so all this has to do is
+   * send the event. fbq queues calls made before fbevents.js finishes loading,
+   * so there is nothing to wait for.
+   */
+  FormBuilderInstance.prototype.trackFacebookPixelEvent = function () {
+    const pixel = this.config.facebook_pixel;
+
+    if (!pixel || !pixel.enabled || !pixel.event) {
+      return;
+    }
+
+    // One conversion per visitor. Going Back and forward again, or any other
+    // route that reaches this twice, must not report a second lead.
+    if (this.facebookPixelConversionSent) {
+      return;
+    }
+    this.facebookPixelConversionSent = true;
+
+    if (typeof window.fbq !== "function") {
+      // The base code is only printed when the pixel is configured, so this
+      // means something stripped it - an ad blocker, or aggressive optimisation
+      console.warn(
+        "Form Builder: Meta Pixel event not sent, fbq is unavailable on this page."
+      );
+      return;
+    }
+
+    try {
+      // eventID lets Meta de-duplicate if the same submission is also sent
+      // server-side through the Conversions API later
+      window.fbq("track", pixel.event, {}, {
+        eventID: this.submissionUuid || undefined,
+      });
+    } catch (e) {
+      console.error("Form Builder: Meta Pixel event failed:", e);
+    }
+  };
+
+  /**
+   * Fire a custom event for a completed step.
+   *
+   * trackCustom, never track: a standard event name here would pollute what
+   * that event means everywhere else in the ad account. These names exist to
+   * build retargeting audiences of people who started the form and stopped,
+   * which is a group the webhooks cannot reach - they may have typed nothing.
+   */
+  FormBuilderInstance.prototype.trackFacebookPixelStep = function (pageNumber) {
+    const pixel = this.config.facebook_pixel;
+
+    if (!pixel || !pixel.enabled || !pixel.track_steps) {
+      return;
+    }
+
+    if (typeof window.fbq !== "function") {
+      return;
+    }
+
+    const prefix = pixel.step_event_prefix || "Konstruct_Form_Step";
+
+    try {
+      window.fbq("trackCustom", prefix + pageNumber, {
+        // Read from a data attribute, so cast it: a string here would make
+        // number comparisons in the audience builder behave oddly
+        form_id: parseInt(this.formId, 10),
+        page_number: pageNumber,
+      });
+    } catch (e) {
+      console.error("Form Builder: Meta Pixel step event failed:", e);
+    }
   };
 
   FormBuilderInstance.prototype.saveSubmissionToDatabase = function () {
