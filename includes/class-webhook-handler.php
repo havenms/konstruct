@@ -200,11 +200,20 @@ class Form_Builder_Webhook_Handler {
         
         $status_code = wp_remote_retrieve_response_code($response);
         $body = wp_remote_retrieve_body($response);
+
+        if ($status_code < 200 || $status_code >= 300) {
+            return array(
+                'error' => 'Webhook destination returned HTTP ' . intval($status_code),
+                'status_code' => $status_code,
+                'body' => $body,
+                'success' => false,
+            );
+        }
         
         return array(
             'status_code' => $status_code,
             'body' => $body,
-            'success' => $status_code >= 200 && $status_code < 300,
+            'success' => true,
         );
     }
     
