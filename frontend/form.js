@@ -612,44 +612,106 @@
 
   FormBuilderInstance.prototype.submitForm = function () {
     if (!this.validateCurrentPage()) {
-      return;
+      return Promise.resolve(false);
     }
 
+    if (this.submitting) {
+      return Promise.resolve(false);
+    }
+
+    const self = this;
     const currentPageConfig = this.config.pages[this.currentPage - 1];
 
     // Normalize all phone numbers to E.164 format before submission
     this.normalizeAllPhoneNumbers();
+    this.setSubmitting(true);
 
-    // Always save submission to database (regardless of webhook)
-    this.saveSubmissionToDatabase();
+    // Persist first, then deliver to the configured webhook. The success state
+    // is only shown after both operations have confirmed success.
+    let request = this.saveSubmissionToDatabase();
+    request = request.then(function (data) {
+      if (data && data.submission_uuid) {
+        self.submissionUuid = data.submission_uuid;
+      }
 
-    // Send webhook if enabled for last page
-    if (
-      currentPageConfig.webhook &&
-      currentPageConfig.webhook.enabled &&
-      currentPageConfig.webhook.url
-    ) {
-      this.sendWebhook(currentPageConfig.webhook.url, this.currentPage, true);
-    }
+      if (
+        currentPageConfig.webhook &&
+        currentPageConfig.webhook.enabled &&
+        currentPageConfig.webhook.url
+      ) {
+        return self.sendWebhook(
+          currentPageConfig.webhook.url,
+          self.currentPage,
+          true
+        );
+      }
 
-    // Fire the configured Meta Pixel event
-    this.trackFacebookPixelEvent();
+      return null;
+    });
 
-    // Execute custom JS if present
-    if (currentPageConfig.customJS) {
-      try {
-        const func = new Function("formData", currentPageConfig.customJS);
-        func(this.formData);
-      } catch (e) {
-        console.error("Error executing custom JS:", e);
+    return request
+      .then(function () {
+        // Fire the configured Meta Pixel event only after confirmed delivery.
+        self.trackFacebookPixelEvent();
+
+        if (currentPageConfig.customJS) {
+          try {
+            const func = new Function("formData", currentPageConfig.customJS);
+            func(self.formData);
+          } catch (e) {
+            console.error("Error executing custom JS:", e);
+          }
+        }
+
+        self.showSuccess();
+        self.clearSavedData();
+        return true;
+      })
+      .catch(function (error) {
+        const message =
+          error && error.message
+            ? error.message
+            : "We could not submit your form. Please try again.";
+        self.showSubmissionError(message);
+        return false;
+      })
+      .then(function (result) {
+        self.setSubmitting(false);
+        return result;
+      });
+  };
+
+  FormBuilderInstance.prototype.setSubmitting = function (submitting) {
+    this.submitting = submitting;
+    const button = this.formElement
+      ? this.formElement.querySelector(".form-builder-btn-submit")
+      : null;
+    if (!button) return;
+
+    if (submitting) {
+      button.dataset.originalText = button.textContent;
+      button.disabled = true;
+      button.setAttribute("aria-busy", "true");
+      button.textContent = "Submitting…";
+    } else {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      if (button.dataset.originalText) {
+        button.textContent = button.dataset.originalText;
       }
     }
+  };
 
-    // Show success message
-    this.showSuccess();
-
-    // Clear saved data
-    this.clearSavedData();
+  FormBuilderInstance.prototype.showSubmissionError = function (message) {
+    if (!this.formElement) return;
+    let error = this.formElement.querySelector(".form-builder-submit-error");
+    if (!error) {
+      error = document.createElement("p");
+      error.className = "form-builder-submit-error";
+      error.setAttribute("role", "alert");
+      this.formElement.appendChild(error);
+    }
+    error.textContent = message;
   };
 
   /**
@@ -746,24 +808,25 @@
       }
     });
 
-    fetch(formBuilderFrontend.apiUrl + "submissions", {
+    return fetch(formBuilderFrontend.apiUrl + "submissions", {
       method: "POST",
       headers: {
         "X-WP-Nonce": formBuilderFrontend.nonce,
       },
       body: fd,
-    })
-      .then(function (response) {
-        return response.json();
-      })
-      .then(function (data) {
+    }).then(function (response) {
+      return response.json().catch(function () {
+        return {};
+      }).then(function (data) {
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || "The form could not be saved.");
+        }
         if (data.submission_uuid) {
           self.submissionUuid = data.submission_uuid;
         }
-      })
-      .catch(function (error) {
-        console.error("Database save error:", error);
+        return data;
       });
+    });
   };
 
   FormBuilderInstance.prototype.sendWebhook = function (
@@ -794,7 +857,7 @@
       }
     });
 
-    fetch(formBuilderFrontend.apiUrl + "webhook", {
+    return fetch(formBuilderFrontend.apiUrl + "webhook", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -807,19 +870,19 @@
         webhook_url: url,
         formData: payloadData,
       }),
-    })
-      .then(function (response) {
-        return response.json();
-      })
-      .then(function (data) {
+    }).then(function (response) {
+      return response.json().catch(function () {
+        return {};
+      }).then(function (data) {
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || "The lead delivery webhook failed.");
+        }
         if (isFinal && data.submission_uuid) {
-          // Mark as delivered
           self.submissionUuid = data.submission_uuid;
         }
-      })
-      .catch(function (error) {
-        console.error("Webhook error:", error);
+        return data;
       });
+    });
   };
 
   FormBuilderInstance.prototype.sendStepNotification = function (pageNumber) {
@@ -986,4 +1049,7 @@
       console.error("Error clearing localStorage:", e);
     }
   };
+
+  // Expose the constructor for runtime diagnostics and automated behavior tests.
+  window.FormBuilderInstance = FormBuilderInstance;
 })();
