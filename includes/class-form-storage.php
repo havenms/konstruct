@@ -238,6 +238,60 @@ class Form_Builder_Storage {
     }
     
     /**
+     * Persist cumulative progress without changing the legacy webhook insert API.
+     * A UUID-scoped DB lock serializes the read/merge/write, including first inserts.
+     * The configured last page identifies final records; delivered is a webhook flag
+     * and can already be true on an incomplete submission.
+     */
+    public function save_submission_record($form_id, $submission_uuid, $page_number, $form_data, $is_final = false) {
+        global $wpdb;
+
+        $lock = 'konstruct:' . substr(hash('sha256', $submission_uuid), 0, 54);
+        if ((string) $wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s, 5)', $lock)) !== '1') {
+            return new WP_Error('save_busy', 'Progress could not be saved. Please try again.', array('status' => 503));
+        }
+
+        try {
+            $existing = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM {$this->submissions_table} WHERE submission_uuid = %s", $submission_uuid
+            ), ARRAY_A);
+            if ($existing && intval($existing['form_id']) !== intval($form_id)) {
+                return new WP_Error('submission_form_mismatch', 'Submission belongs to another form', array('status' => 409));
+            }
+
+            $form = $this->get_form_by_id($form_id);
+            $total_pages = $form ? count($form['form_config']['pages']) : 0;
+            if (!$total_pages || $page_number < 1 || $page_number > $total_pages || (!$is_final && $page_number >= $total_pages)) {
+                return new WP_Error('invalid_page', 'Invalid submission page', array('status' => 400));
+            }
+            if ($existing) {
+                // A late Next request must not mutate a final (or later-step) row.
+                if (!$is_final && intval($existing['page_number']) > intval($page_number)) {
+                    return intval($existing['id']);
+                }
+                $previous = json_decode($existing['form_data'], true);
+                $merged = array_merge(is_array($previous) ? $previous : array(), $form_data);
+                $result = $wpdb->update($this->submissions_table, array(
+                    'form_data' => json_encode($merged),
+                    'page_number' => $is_final ? $total_pages : intval($page_number),
+                    'delivered' => $is_final || !empty($existing['delivered']) ? 1 : 0,
+                ), array('id' => intval($existing['id'])), array('%s', '%d', '%d'), array('%d'));
+                if ($result !== false) {
+                    return intval($existing['id']);
+                }
+            } else {
+                $id = $this->insert_submission($form_id, $submission_uuid, $is_final ? $total_pages : $page_number, $form_data, $is_final);
+                if ($id) {
+                    return intval($id);
+                }
+            }
+            return new WP_Error('save_failed', 'Failed to save submission', array('status' => 500));
+        } finally {
+            $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $lock));
+        }
+    }
+
+    /**
      * Update submission delivery status
      */
     public function mark_submission_delivered($submission_uuid) {

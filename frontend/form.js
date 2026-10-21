@@ -37,7 +37,13 @@
 
     const formData = window.formBuilderData[this.instanceId];
     this.config = formData.formConfig;
-    this.submissionUuid = formData.submissionUuid;
+    // A cached page is shared by visitors; never reuse its server UUID.
+    const bytes = window.crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 15) | 64;
+    bytes[8] = (bytes[8] & 63) | 128;
+    this.submissionUuid = Array.from(bytes, (byte, index) =>
+      ([4, 6, 8, 10].includes(index) ? "-" : "") + byte.toString(16).padStart(2, "0")
+    ).join("");
 
     // Initialize first
     this.init();
@@ -479,11 +485,22 @@
     }
   };
 
-  FormBuilderInstance.prototype.goToNextPage = function () {
-    if (!this.validateCurrentPage()) {
-      return;
+  FormBuilderInstance.prototype.goToNextPage = async function () {
+    if (this.submitting || this.currentPage >= this.totalPages || !this.validateCurrentPage()) {
+      return false;
     }
 
+    this.setSubmitting(true);
+    try {
+      this.normalizeAllPhoneNumbers();
+      await this.saveSubmissionToDatabase(true);
+    } catch (error) {
+      this.showSubmissionError("Your progress could not be saved. Please try again.");
+      this.setSubmitting(false);
+      return false;
+    }
+
+    this.setSubmitting(false);
     const currentPageConfig = this.config.pages[this.currentPage - 1];
 
     // Send webhook if enabled for current page
@@ -543,10 +560,13 @@
     if (this.currentPage < this.totalPages) {
       this.currentPage++;
       this.showPage(this.currentPage, true); // Scroll on navigation
+      this.saveData();
     }
+    return true;
   };
 
   FormBuilderInstance.prototype.goToPreviousPage = function () {
+    if (this.submitting) return;
     if (this.currentPage > 1) {
       this.currentPage--;
       this.showPage(this.currentPage, true); // Scroll on navigation
@@ -683,23 +703,16 @@
 
   FormBuilderInstance.prototype.setSubmitting = function (submitting) {
     this.submitting = submitting;
-    const button = this.formElement
-      ? this.formElement.querySelector(".form-builder-btn-submit")
-      : null;
-    if (!button) return;
-
-    if (submitting) {
-      button.dataset.originalText = button.textContent;
-      button.disabled = true;
-      button.setAttribute("aria-busy", "true");
-      button.textContent = "Submitting…";
-    } else {
-      button.disabled = false;
-      button.removeAttribute("aria-busy");
-      if (button.dataset.originalText) {
-        button.textContent = button.dataset.originalText;
+    [".form-builder-btn-next", ".form-builder-btn-submit", ".form-builder-btn-back"].forEach((selector) => {
+      const button = this.formElement ? this.formElement.querySelector(selector) : null;
+      if (!button) return;
+      button.disabled = submitting;
+      if (submitting) {
+        button.setAttribute("aria-busy", "true");
+      } else {
+        button.removeAttribute("aria-busy");
       }
-    }
+    });
   };
 
   FormBuilderInstance.prototype.showSubmissionError = function (message) {
@@ -788,12 +801,14 @@
     }
   };
 
-  FormBuilderInstance.prototype.saveSubmissionToDatabase = function () {
+  FormBuilderInstance.prototype.saveSubmissionToDatabase = function (partial = false) {
     const self = this;
 
     // Build multipart FormData to include actual files
     const fd = new FormData();
     fd.append("form_id", this.formId);
+    fd.append("partial", partial ? "1" : "0");
+    fd.append("page_number", String(this.currentPage));
     if (this.submissionUuid) fd.append("submission_uuid", this.submissionUuid);
 
     // Append non-file data as a JSON blob for reliability
@@ -810,9 +825,6 @@
 
     return fetch(formBuilderFrontend.apiUrl + "submissions", {
       method: "POST",
-      headers: {
-        "X-WP-Nonce": formBuilderFrontend.nonce,
-      },
       body: fd,
     }).then(function (response) {
       return response.json().catch(function () {
@@ -861,7 +873,6 @@
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-WP-Nonce": formBuilderFrontend.nonce,
       },
       body: JSON.stringify({
         form_id: this.formId,
@@ -902,7 +913,6 @@
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-WP-Nonce": formBuilderFrontend.nonce,
       },
       body: JSON.stringify({
         form_id: parseInt(this.formId),
