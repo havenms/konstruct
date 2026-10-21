@@ -71,7 +71,7 @@ class Form_Builder_Asset_Manager {
                 'form-builder-frontend',
                 FORM_BUILDER_PLUGIN_URL . 'frontend/form.js',
                 array(),
-                FORM_BUILDER_VERSION,
+                FORM_BUILDER_VERSION . '.' . filemtime(FORM_BUILDER_PLUGIN_DIR . 'frontend/form.js'),
                 true
             );
             
