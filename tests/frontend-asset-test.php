@@ -17,3 +17,13 @@ $post=new WP_Post();
 $expected=FORM_BUILDER_VERSION.'.'.filemtime(FORM_BUILDER_PLUGIN_DIR.'frontend/form.js');
 if($GLOBALS['version']!==$expected){fwrite(STDERR,"FAIL: modified frontend must have content-deployment cache busting\n");exit(1);}
 echo "PASS: frontend URL includes deployed script modification time\n";
+function wp_add_inline_script(...$args){}
+function esc_js($s){return $s;}
+require dirname(__DIR__).'/includes/class-form-renderer.php';
+$renderer=(new ReflectionClass('Form_Builder_Renderer'))->newInstanceWithoutConstructor();
+$enqueue=new ReflectionMethod('Form_Builder_Renderer','enqueue_form_assets');
+$enqueue->setAccessible(true);
+$GLOBALS['version']=null;
+$enqueue->invoke($renderer,'test',array('id'=>1,'form_slug'=>'test','form_config'=>array('pages'=>array())));
+if($GLOBALS['version']!==$expected){fwrite(STDERR,"FAIL: shortcode renderer must also cache-bust deployed frontend\n");exit(1);}
+echo "PASS: shortcode renderer URL includes deployed script modification time\n";
