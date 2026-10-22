@@ -80,6 +80,9 @@ foreach ($submissions as &$submission) {
         $submission['form_data'] = json_decode($submission['form_data'], true);
     }
 }
+// Break the reference before the template reuses $submission by value.
+// Otherwise rendering overwrites the oldest row and displays a duplicate.
+unset($submission);
 
 // Calculate pagination info
 $total_pages = ceil($total_submissions / $per_page);

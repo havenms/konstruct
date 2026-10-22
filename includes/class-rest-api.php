@@ -216,7 +216,7 @@ class Form_Builder_REST_API {
             } else {
                 // Collect non-file params except internal REST params
                 foreach ($raw as $key => $val) {
-                    if (in_array($key, array('form_id', 'submission_uuid', 'rest_route'))) {
+                    if (in_array($key, array('form_id', 'submission_uuid', 'rest_route', 'partial', 'page_number'))) {
                         continue;
                     }
                     if (!isset($_FILES[$key])) {
@@ -260,6 +260,25 @@ class Form_Builder_REST_API {
             );
         }
 
+        $submission_params = $is_multipart ? $raw : $params;
+        $partial = isset($submission_params['partial']) ? $submission_params['partial'] : false;
+        if (!in_array($partial, array(true, false, 1, 0, '1', '0'), true)) {
+            return new WP_Error('invalid_partial', 'Invalid partial flag', array('status' => 400));
+        }
+        $is_partial = in_array($partial, array(true, 1, '1'), true);
+        $total_pages = count($form['form_config']['pages']);
+        $page_number = $total_pages;
+        if ($is_partial) {
+            $page = isset($submission_params['page_number']) ? $submission_params['page_number'] : null;
+            if ((!is_int($page) && !is_string($page)) || !preg_match('/^[1-9][0-9]*$/D', (string) $page) || intval($page) >= $total_pages) {
+                return new WP_Error('invalid_page', 'Invalid partial page', array('status' => 400));
+            }
+            $page_number = intval($page);
+        }
+        if (!is_array($form_data)) {
+            return new WP_Error('invalid_data', 'formData must be an object', array('status' => 400));
+        }
+
         // Handle file uploads if multipart
         if ($is_multipart && !empty($_FILES)) {
             $form_data = $this->file_handler->process_uploads_and_enrich_form_data($submission_uuid, $form_data, $_FILES);
@@ -269,13 +288,16 @@ class Form_Builder_REST_API {
         }
 
         // Save submission with enriched form_data (with file links)
-        $submission_id = $storage->insert_submission(
+        $submission_id = $storage->save_submission_record(
             $form_id,
             $submission_uuid,
-            count($form['form_config']['pages']),
+            $page_number,
             $form_data,
-            true
+            !$is_partial
         );
+        if (is_wp_error($submission_id)) {
+            return $submission_id;
+        }
 
         if (!$submission_id) {
             return new WP_Error(
@@ -285,9 +307,11 @@ class Form_Builder_REST_API {
             );
         }
 
-        // Send final submission email notification
-        $email_handler = new Form_Builder_Email_Handler();
-        $email_handler->send_submission_notification($form_id, $form_data, $submission_uuid);
+        // Progress persistence never triggers delivery or notifications.
+        if (!$is_partial) {
+            $email_handler = new Form_Builder_Email_Handler();
+            $email_handler->send_submission_notification($form_id, $form_data, $submission_uuid);
+        }
 
         return new WP_REST_Response(array(
             'success' => true,
