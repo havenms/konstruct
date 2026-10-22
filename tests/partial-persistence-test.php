@@ -14,6 +14,7 @@ class Form_Builder_File_Handler {}
 class Form_Builder_Email_Handler {
     static $sent = array();
     function send_submission_notification($id, $data, $uuid) { self::$sent[]=array($id,$data,$uuid); }
+    function send_step_notification($id, $page, $data, $uuid) { return false; }
 }
 class MemoryDB {
     public $prefix='wp_'; public $rows=array(); public $insert_id=0; public $last_error='';
