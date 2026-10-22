@@ -75,31 +75,6 @@ class Form_Builder_Webhook_Handler {
             );
         }
         
-        // Store submission (if first time for this UUID)
-        $submission_id = null;
-        if (!empty($submission_uuid)) {
-            // Check if submission exists
-            global $wpdb;
-            $existing = $wpdb->get_var($wpdb->prepare(
-                "SELECT id FROM {$wpdb->prefix}form_builder_submissions WHERE submission_uuid = %s",
-                $submission_uuid
-            ));
-            
-            if (!$existing) {
-                $submission_id = $this->storage->insert_submission(
-                    $form_id,
-                    $submission_uuid,
-                    $page_number,
-                    $form_data,
-                    false
-                );
-            } else {
-                // Update existing submission
-                $submission_id = $existing;
-                $this->update_submission_data($submission_uuid, $form_data, $page_number);
-            }
-        }
-        
         // Sanitize form data (ensure it's an array)
         if (!is_array($form_data)) {
             $form_data = array();
@@ -115,6 +90,22 @@ class Form_Builder_Webhook_Handler {
             );
         }
         
+        // Reuse the UUID-locked cumulative save path. A delayed page webhook must
+        // not erase later property details, regress progress, or reuse another form's UUID.
+        $submission_id = $this->storage->save_submission_record(
+            $form_id,
+            $submission_uuid,
+            $page_number,
+            $form_data,
+            $page_number === count($form['form_config']['pages'])
+        );
+        if (is_wp_error($submission_id)) {
+            return $submission_id;
+        }
+        if (!$submission_id) {
+            return new WP_Error('save_failed', 'Failed to save submission', array('status' => 500));
+        }
+
         // Prepare payload
         $payload = array(
             'formData' => $form_data
@@ -214,30 +205,6 @@ class Form_Builder_Webhook_Handler {
             'status_code' => $status_code,
             'body' => $body,
             'success' => true,
-        );
-    }
-    
-    /**
-     * Update submission data
-     */
-    private function update_submission_data($submission_uuid, $form_data, $page_number) {
-        global $wpdb;
-        
-        if (is_array($form_data)) {
-            $form_data_json = json_encode($form_data);
-        } else {
-            $form_data_json = $form_data;
-        }
-        
-        $wpdb->update(
-            $wpdb->prefix . 'form_builder_submissions',
-            array(
-                'form_data' => $form_data_json,
-                'page_number' => intval($page_number),
-            ),
-            array('submission_uuid' => sanitize_text_field($submission_uuid)),
-            array('%s', '%d'),
-            array('%s')
         );
     }
     
