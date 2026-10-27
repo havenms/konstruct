@@ -35,9 +35,16 @@ foreach (array('https://other.example/wp-json/ahk-ghl/v1/step-1','https://afford
     check(ahk_ghl_relay_request(false,$args,$unrelated)===false,'unrelated requests are untouched');
 }
 $bad=$args;$bad['method']='GET';check(ahk_ghl_relay_request(false,$bad,'https://affordablehomeking.com/wp-json/ahk-ghl/v1/step-1') instanceof WP_Error,'non-POST delivery is refused');
-foreach (array('{bad json',json_encode(array('formData'=>array('email'=>'not-email','phone'=>'123'))),json_encode(array('formData'=>array('email'=>'fixture@example.invalid')))) as $badBody) {
+foreach (array('{bad json',json_encode(array('formData'=>array('email'=>'not-email','phone'=>'123'))),json_encode(array('formData'=>array('phone'=>'2025550147')))) as $badBody) {
     $bad=$args;$bad['body']=$badBody;check(ahk_ghl_relay_request(false,$bad,'https://affordablehomeking.com/wp-json/ahk-ghl/v1/step-1') instanceof WP_Error,'invalid contact payloads are refused');
 }
 check(count($GLOBALS['ahk_test_requests'])===2,'guards never create extra deliveries');
 check($GLOBALS['ahk_test_filters']['pre_http_request']===array('ahk_ghl_relay_request',10,3),'native WordPress HTTP hook is registered');
+$emailOnly=$args;$emailOnly['body']=json_encode(array('formData'=>array('email'=>'contact-fixture@example.invalid')));
+$contactResponse=ahk_ghl_relay_request(false,$emailOnly,'https://affordablehomeking.com/wp-json/ahk-ghl/v1/step-2');
+check(is_array($contactResponse)&&$contactResponse['response']['code']===200,'Email-only Elementor contact is accepted without fabricating phone');
+foreach (array('elementor-offer','elementor-contact') as $variant) {
+    $r=ahk_ghl_relay_request(false,$emailOnly,'https://affordablehomeking.com/wp-json/ahk-ghl/v1/'.$variant);
+    check(is_array($r)&&$r['response']['code']===200,'Elementor variant has an exact private route');
+}
 echo "AHK GHL relay routing and guard tests passed\n";

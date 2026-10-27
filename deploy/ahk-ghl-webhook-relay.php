@@ -8,11 +8,13 @@ if (!defined('AHK_GHL_ENDPOINTS_FILE')) {
     define('AHK_GHL_ENDPOINTS_FILE', '/home/ahkllc/.ahk-ghl-webhooks.php');
 }
 
-/** Intercept only Konstruct's two exact, non-secret local destination aliases. */
+/** Intercept only AHK's exact, non-secret local destination aliases. */
 function ahk_ghl_relay_request($preempt, $args, $url) {
     $aliases = array(
         'https://affordablehomeking.com/wp-json/ahk-ghl/v1/step-1' => 'step-1',
         'https://affordablehomeking.com/wp-json/ahk-ghl/v1/step-2' => 'step-2',
+        'https://affordablehomeking.com/wp-json/ahk-ghl/v1/elementor-offer' => 'elementor-offer',
+        'https://affordablehomeking.com/wp-json/ahk-ghl/v1/elementor-contact' => 'elementor-contact',
     );
     if ($preempt !== false || !isset($aliases[$url])) { return $preempt; }
     if (strtoupper(isset($args['method']) ? $args['method'] : '') !== 'POST') {
@@ -20,7 +22,7 @@ function ahk_ghl_relay_request($preempt, $args, $url) {
     }
     $body = isset($args['body']) && is_string($args['body']) ? json_decode($args['body'], true) : null;
     $data = is_array($body) && isset($body['formData']) ? $body['formData'] : null;
-    if (!is_array($data) || empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL) || empty($data['phone'])) {
+    if (!is_array($data) || empty($data['email']) || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
         return new WP_Error('ahk_ghl_invalid_payload', 'Lead contact details are incomplete.');
     }
     if (!is_readable(AHK_GHL_ENDPOINTS_FILE)) {

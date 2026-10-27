@@ -1,0 +1,183 @@
+{
+  "verified_at": "2026-10-27T21:03:15.291102+00:00",
+  "latest_real_lead": {
+    "wordpress_submission": 10,
+    "ghl_contact": "yZy9uTmJF3lmFVap9n6b",
+    "original_created_at": "2026-10-26T06:24:59.484Z",
+    "already_delivered": true
+  },
+  "first_step_only_test": {
+    "wordpress_submission": 12,
+    "ghl_contact": "Z9Uz8R353kvJMKAnOiMp",
+    "created_at": "2026-10-27T21:00:39.576Z",
+    "property_fields_empty": true
+  },
+  "full_test": {
+    "wordpress_submission": 11,
+    "ghl_contact": "USjU8VsIJQcxClwvwyGA",
+    "same_contact_across_konstruct_and_elementor": true,
+    "single_contact_by_email_and_phone": true,
+    "phone_address_property_type_and_timeline_preserved": true
+  },
+  "wordpress": {
+    "elementor_meta_unchanged": true,
+    "form_config_unchanged": true,
+    "historical_submissions_unchanged": true,
+    "private_config_mode": "600",
+    "adapter_sha": "1c934060c1a37854b613d0d2079ef0211ba97043833de44a939172a161b3e099",
+    "relay_sha": "7d5d662620b5925fbe3b059311d837e311993e90f873d0616188367c088551f9"
+  },
+  "workflows": {
+    "step-1": {
+      "id": "d8183017-f413-4956-95e5-19ea622e4347",
+      "name": "AHK Website - Step 1 Contact Capture",
+      "published": true,
+      "active_trigger": true
+    },
+    "step-2": {
+      "id": "9aa500dc-d300-480f-92b2-cf9514a13fe6",
+      "name": "AHK Website - Step 2 Property Details",
+      "published": true,
+      "active_trigger": true
+    },
+    "elementor-offer": {
+      "id": "4b6b6d87-adba-489b-b25a-d8f5463e2034",
+      "name": "AHK Website - Elementor Property Inquiry",
+      "published": true,
+      "active_trigger": true
+    },
+    "elementor-contact": {
+      "id": "3caf891b-d518-4df0-9c7d-c44d6a48c43d",
+      "name": "AHK Website - Elementor Contact Message",
+      "published": true,
+      "active_trigger": true
+    }
+  },
+  "public_form_audit": [
+    {
+      "path": "about-us",
+      "forms": [
+        {
+          "postId": "1494",
+          "formId": "714eb6ce",
+          "fields": [
+            {
+              "name": "form_fields[name]",
+              "type": "text"
+            },
+            {
+              "name": "form_fields[email]",
+              "type": "number"
+            },
+            {
+              "name": "form_fields[field_0da9406]",
+              "type": "email"
+            },
+            {
+              "name": "form_fields[message]",
+              "type": "select-one"
+            },
+            {
+              "name": "form_fields[field_2bbcc3b]",
+              "type": "textarea"
+            }
+          ],
+          "hasSubmit": true
+        }
+      ]
+    },
+    {
+      "path": "properties",
+      "forms": [
+        {
+          "postId": "1495",
+          "formId": "3feba3f8",
+          "fields": [
+            {
+              "name": "form_fields[name]",
+              "type": "text"
+            },
+            {
+              "name": "form_fields[email]",
+              "type": "number"
+            },
+            {
+              "name": "form_fields[field_0da9406]",
+              "type": "email"
+            },
+            {
+              "name": "form_fields[message]",
+              "type": "select-one"
+            },
+            {
+              "name": "form_fields[field_2bbcc3b]",
+              "type": "textarea"
+            }
+          ],
+          "hasSubmit": true
+        }
+      ]
+    },
+    {
+      "path": "how-it-works",
+      "forms": [
+        {
+          "postId": "1799",
+          "formId": "8d4ec60",
+          "fields": [
+            {
+              "name": "form_fields[name]",
+              "type": "text"
+            },
+            {
+              "name": "form_fields[email]",
+              "type": "number"
+            },
+            {
+              "name": "form_fields[field_0da9406]",
+              "type": "email"
+            },
+            {
+              "name": "form_fields[message]",
+              "type": "select-one"
+            },
+            {
+              "name": "form_fields[field_2bbcc3b]",
+              "type": "textarea"
+            }
+          ],
+          "hasSubmit": true
+        }
+      ]
+    },
+    {
+      "path": "contact",
+      "forms": [
+        {
+          "postId": "1498",
+          "formId": "727f1bc",
+          "fields": [
+            {
+              "name": "form_fields[name]",
+              "type": "text"
+            },
+            {
+              "name": "form_fields[email]",
+              "type": "email"
+            },
+            {
+              "name": "form_fields[message]",
+              "type": "textarea"
+            }
+          ],
+          "hasSubmit": true
+        }
+      ]
+    }
+  ],
+  "cleanup": {
+    "temporary_helpers_absent": true,
+    "test_browser_resume_cleared": true,
+    "test_records_retained": true
+  }
+}
