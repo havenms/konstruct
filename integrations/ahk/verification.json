@@ -1,0 +1,127 @@
+{
+  "site": "https://affordablehomeking.com",
+  "clientId": "01a10ccd-d4e2-71b0-94f2-98ee00fc2367",
+  "deployed_sha256": "5c5c7c2fcaf87319a76690361cb13965825e2c06b5a8745c5d77192381b3d6c5",
+  "backup": "/home/ahkllc/ahk-portal-before-20261104-174900.json",
+  "preservation": {
+    "ahk-elementor-ghl.php": true,
+    "ahk-ghl-webhook-relay.php": true,
+    "private_ghl_unchanged": true,
+    "forms_unchanged": true,
+    "portal_filter_active": true,
+    "private_config_mode": "0600"
+  },
+  "browser_forms_tested": [
+    "homepage Konstruct steps 1 and 2",
+    "About Us Elementor offer",
+    "Properties Elementor offer",
+    "How It Works Elementor offer",
+    "Contact Elementor email-only (390px mobile)"
+  ],
+  "portal_test_leads": [
+    {
+      "number": 10226,
+      "email": "ahk-portal-20261104@example.invalid"
+    },
+    {
+      "number": 10227,
+      "email": "ahk-portal-contact-20261104@example.invalid"
+    },
+    {
+      "number": 10228,
+      "email": "ahk-portal-offer-20261104@example.invalid"
+    }
+  ],
+  "portal_scoped_readback_count": 3,
+  "ghl_test_contacts": [
+    {
+      "kind": "homepage",
+      "id": "fUM7XnjVm592xneQoqKJ",
+      "locationId": "dxXZxNmnEaDuqgVSIyxr",
+      "email": "ahk-portal-20261104@example.invalid",
+      "customFields": [
+        {
+          "id": "0FdwopFLT06FB6d9Z3Gg",
+          "value": "TEST ONLY - 123 Portal Verification Lane, NC"
+        },
+        {
+          "id": "5q1kbbuepk0amhyog0Nk",
+          "value": "TEST ONLY: Authorized integration check. Please disregard. Verifies portal and GHL dual delivery."
+        },
+        {
+          "id": "g1yMM6UrVyTIoTeqveQC",
+          "value": "Single-family home"
+        },
+        {
+          "id": "syalnU0cId3bYrtChdRk",
+          "value": "Within 30 days"
+        }
+      ]
+    },
+    {
+      "kind": "contact",
+      "id": "w1UU3mQP69mAvhhbyU6Z",
+      "locationId": "dxXZxNmnEaDuqgVSIyxr",
+      "email": "ahk-portal-contact-20261104@example.invalid",
+      "customFields": [
+        {
+          "id": "5q1kbbuepk0amhyog0Nk",
+          "value": "TEST ONLY: Authorized mobile contact form check for GHL and client portal. Please disregard."
+        }
+      ]
+    },
+    {
+      "kind": "offer",
+      "id": "Ku7m5QUwC31zikjnYt0T",
+      "locationId": "dxXZxNmnEaDuqgVSIyxr",
+      "email": "ahk-portal-offer-20261104@example.invalid",
+      "customFields": [
+        {
+          "id": "5q1kbbuepk0amhyog0Nk",
+          "value": "TEST ONLY: Authorized shared Elementor offer-form check. Please disregard."
+        },
+        {
+          "id": "g1yMM6UrVyTIoTeqveQC",
+          "value": "Single Family Home"
+        }
+      ]
+    }
+  ],
+  "portal_delivery_http_statuses": [
+    201,
+    200,
+    201,
+    201,
+    200,
+    200
+  ],
+  "konstruct_ghl_http_statuses": [
+    "200",
+    "200"
+  ],
+  "invitation": {
+    "access": {
+      "id": "01a1a7b5-c496-777f-9a45-33ec218a3177",
+      "userId": "4ff42ff6-6925-4db7-9964-93b6d3062487",
+      "name": "Affordable Home King Team",
+      "email": "team@affordablehomeking.com",
+      "emailOnNewLead": true,
+      "passwordSet": false,
+      "lastSeenAt": null,
+      "createdAt": "2026-11-04T17:57:49.846Z"
+    },
+    "invitationJobs": [
+      {
+        "id": "email.send.portal-invite.01a1a7b5-c496-777f-9a45-33ec218a3177.028f52aa-a1e9-4c89-9514-ffff7b55f5a8",
+        "state": "completed",
+        "to": "team@affordablehomeking.com",
+        "subject": "Your client portal for Affordable Home King"
+      }
+    ]
+  },
+  "invitation_sendgrid_accepted": true,
+  "invitation_inbox_receipt_verified": false,
+  "client_password_setup_pending": true,
+  "synthetic_records_retained": true,
+  "temporary_helpers_absent": true
+}
