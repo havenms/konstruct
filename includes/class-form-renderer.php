@@ -190,9 +190,13 @@ class Form_Builder_Renderer {
         $autocomplete_map = array(
             'email' => 'email',
             'phone' => 'tel',
-            'name' => 'name',
+            // Specific name tokens must precede the full-name substring.
+            'username' => 'username',
+            'fname' => 'given-name',
+            'lname' => 'family-name',
             'first' => 'given-name',
             'last' => 'family-name',
+            'name' => 'name',
             'address' => 'street-address',
             'city' => 'address-level2',
             'state' => 'address-level1',
@@ -201,7 +205,6 @@ class Form_Builder_Renderer {
             'company' => 'organization',
             'password' => 'current-password',
             'url' => 'url',
-            'username' => 'username',
         );
 
         $autocomplete = 'off';

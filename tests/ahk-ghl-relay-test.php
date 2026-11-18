@@ -25,7 +25,7 @@ if ($mode==='missing' || $mode==='invalid') {
 check($response['response']['code']===200,'contact webhook response is preserved');
 check(count($GLOBALS['ahk_test_requests'])===1,'one remote request is made');
 check($GLOBALS['ahk_test_requests'][0][0]==='https://services.leadconnectorhq.com/hooks/fixtureLocation12345/webhook-trigger/11111111-1111-4111-8111-111111111111','step 1 uses the server-only destination');
-check($GLOBALS['ahk_test_requests'][0][1]===$args,'the original form payload and HTTP options are preserved');
+$sent=$GLOBALS['ahk_test_requests'][0][1];$decoded=json_decode($sent['body'],true);check(isset($decoded['formData']['lead_source']),'source is included');unset($decoded['formData']['lead_source']);$sent['body']=json_encode($decoded);check($sent===$args,'original fields and HTTP options are preserved alongside source');
 $second=ahk_ghl_relay_request(false,$args,'https://affordablehomeking.com/wp-json/ahk-ghl/v1/step-2');
 check($second['response']['code']===200 && count($GLOBALS['ahk_test_requests'])===2,'property step sends one additional request');
 check(strpos($GLOBALS['ahk_test_requests'][1][0],'22222222-2222-4222-8222-222222222222')!==false,'step 2 uses its distinct property workflow');
